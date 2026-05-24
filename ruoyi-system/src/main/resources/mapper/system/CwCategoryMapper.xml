@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.CwCategoryMapper">
+
+    <resultMap type="com.ruoyi.system.domain.CwCategory" id="CwCategoryResult">
+        <result property="categoryId"   column="category_id"/>
+        <result property="categoryName" column="category_name"/>
+        <result property="categoryCode" column="category_code"/>
+        <result property="categoryIcon" column="category_icon"/>
+        <result property="sort"         column="sort"/>
+        <result property="status"       column="status"/>
+        <result property="description"  column="description"/>
+        <result property="createBy"     column="create_by"/>
+        <result property="createTime"   column="create_time"/>
+        <result property="updateBy"     column="update_by"/>
+        <result property="updateTime"   column="update_time"/>
+    </resultMap>
+
+    <sql id="selectCategoryVo">
+        select category_id, category_name, category_code, category_icon,
+               sort, status, description,
+               create_by, create_time, update_by, update_time
+        from cw_category
+    </sql>
+
+    <select id="selectCwCategoryList" parameterType="com.ruoyi.system.domain.CwCategory" resultMap="CwCategoryResult">
+        <include refid="selectCategoryVo"/>
+        <where>
+            <if test="categoryName != null and categoryName != ''">
+                AND category_name like concat('%', #{categoryName}, '%')
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+        order by sort asc
+    </select>
+
+    <select id="selectCwCategoryByCode" parameterType="String" resultMap="CwCategoryResult">
+        <include refid="selectCategoryVo"/>
+        where category_code = #{categoryCode} and status = '0'
+    </select>
+
+    <select id="selectCwCategoryById" parameterType="Long" resultMap="CwCategoryResult">
+        <include refid="selectCategoryVo"/>
+        where category_id = #{categoryId}
+    </select>
+
+    <insert id="insertCwCategory" parameterType="com.ruoyi.system.domain.CwCategory" useGeneratedKeys="true" keyProperty="categoryId">
+        insert into cw_category
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="categoryName != null and categoryName != ''">category_name,</if>
+            <if test="categoryCode != null and categoryCode != ''">category_code,</if>
+            <if test="categoryIcon != null">category_icon,</if>
+            <if test="sort != null">sort,</if>
+            <if test="status != null">status,</if>
+            <if test="description != null">description,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="categoryName != null and categoryName != ''">#{categoryName},</if>
+            <if test="categoryCode != null and categoryCode != ''">#{categoryCode},</if>
+            <if test="categoryIcon != null">#{categoryIcon},</if>
+            <if test="sort != null">#{sort},</if>
+            <if test="status != null">#{status},</if>
+            <if test="description != null">#{description},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate()
+        </trim>
+    </insert>
+
+    <update id="updateCwCategory" parameterType="com.ruoyi.system.domain.CwCategory">
+        update cw_category
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="categoryName != null and categoryName != ''">category_name = #{categoryName},</if>
+            <if test="categoryCode != null and categoryCode != ''">category_code = #{categoryCode},</if>
+            <if test="categoryIcon != null">category_icon = #{categoryIcon},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </trim>
+        where category_id = #{categoryId}
+    </update>
+
+    <delete id="deleteCwCategoryById" parameterType="Long">
+        delete from cw_category where category_id = #{categoryId}
+    </delete>
+
+</mapper>

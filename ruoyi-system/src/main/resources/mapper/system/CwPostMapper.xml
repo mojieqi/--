@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.CwPostMapper">
+
+    <resultMap type="com.ruoyi.system.domain.CwPost" id="CwPostResult">
+        <result property="postId"       column="post_id"/>
+        <result property="userId"       column="user_id"/>
+        <result property="categoryId"   column="category_id"/>
+        <result property="title"        column="title"/>
+        <result property="content"      column="content"/>
+        <result property="coverImage"   column="cover_image"/>
+        <result property="isAnonymous"  column="is_anonymous"/>
+        <result property="viewCount"    column="view_count"/>
+        <result property="likeCount"    column="like_count"/>
+        <result property="commentCount" column="comment_count"/>
+        <result property="reportCount"  column="report_count"/>
+        <result property="auditStatus"  column="audit_status"/>
+        <result property="auditReason"  column="audit_reason"/>
+        <result property="aiCategory"   column="ai_category"/>
+        <result property="aiAuditScore" column="ai_audit_score"/>
+        <result property="isTop"        column="is_top"/>
+        <result property="isHot"        column="is_hot"/>
+        <result property="status"       column="status"/>
+        <result property="createBy"     column="create_by"/>
+        <result property="createTime"   column="create_time"/>
+        <result property="updateBy"     column="update_by"/>
+        <result property="updateTime"   column="update_time"/>
+        <result property="categoryName" column="category_name"/>
+    </resultMap>
+
+    <resultMap type="com.ruoyi.system.domain.CwPost" id="CwPostWithUserResult" extends="CwPostResult">
+        <result property="nickName" column="nick_name"/>
+        <result property="avatar"   column="avatar"/>
+    </resultMap>
+
+    <sql id="selectPostVo">
+        select p.post_id, p.user_id, p.category_id, p.title, p.content,
+               p.cover_image, p.is_anonymous, p.view_count, p.like_count, p.comment_count,
+               p.report_count, p.audit_status, p.audit_reason, p.ai_category, p.ai_audit_score,
+               p.is_top, p.is_hot, p.status,
+               p.create_by, p.create_time, p.update_by, p.update_time
+        from cw_post p
+    </sql>
+
+    <sql id="selectPostWithCategoryVo">
+        select p.post_id, p.user_id, p.category_id, p.title, p.content,
+               p.cover_image, p.is_anonymous, p.view_count, p.like_count, p.comment_count,
+               p.report_count, p.audit_status, p.audit_reason, p.ai_category, p.ai_audit_score,
+               p.is_top, p.is_hot, p.status,
+               p.create_by, p.create_time, p.update_by, p.update_time,
+               c.category_name
+        from cw_post p
+        left join cw_category c on c.category_id = p.category_id
+    </sql>
+
+    <!-- 首页帖子列表(仅展示审核通过的) -->
+    <select id="selectCwPostList" parameterType="com.ruoyi.system.domain.CwPost" resultMap="CwPostWithUserResult">
+        <include refid="selectPostWithCategoryVo"/>
+        <where>
+            p.status = '0'
+            AND p.audit_status = '1'
+            <if test="categoryId != null">
+                AND p.category_id = #{categoryId}
+            </if>
+            <if test="title != null and title != ''">
+                AND p.title like concat('%', #{title}, '%')
+            </if>
+            <if test="isTop != null and isTop != ''">
+                AND p.is_top = #{isTop}
+            </if>
+            <if test="createBy != null and createBy != ''">
+                AND p.create_by = #{createBy}
+            </if>
+        </where>
+        order by p.is_top desc, p.create_time desc
+    </select>
+
+    <!-- 帖子详情 -->
+    <select id="selectCwPostById" parameterType="Long" resultMap="CwPostWithUserResult">
+        <include refid="selectPostWithCategoryVo"/>
+        where p.post_id = #{postId}
+    </select>
+
+    <!-- 查询用户自己的帖子(含不同审核状态) -->
+    <select id="selectMyCwPostList" parameterType="com.ruoyi.system.domain.CwPost" resultMap="CwPostWithUserResult">
+        <include refid="selectPostWithCategoryVo"/>
+        <where>
+            p.create_by = #{createBy}
+            AND p.status = '0'
+            <if test="auditStatus != null and auditStatus != ''">
+                AND p.audit_status = #{auditStatus}
+            </if>
+            <if test="title != null and title != ''">
+                AND p.title like concat('%', #{title}, '%')
+            </if>
+        </where>
+        order by p.create_time desc
+    </select>
+
+    <insert id="insertCwPost" parameterType="com.ruoyi.system.domain.CwPost" useGeneratedKeys="true" keyProperty="postId">
+        insert into cw_post
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="userId != null">user_id,</if>
+            <if test="categoryId != null">category_id,</if>
+            <if test="title != null and title != ''">title,</if>
+            <if test="content != null and content != ''">content,</if>
+            <if test="coverImage != null">cover_image,</if>
+            <if test="isAnonymous != null">is_anonymous,</if>
+            <if test="auditStatus != null">audit_status,</if>
+            <if test="aiCategory != null">ai_category,</if>
+            <if test="aiAuditScore != null">ai_audit_score,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="userId != null">#{userId},</if>
+            <if test="categoryId != null">#{categoryId},</if>
+            <if test="title != null and title != ''">#{title},</if>
+            <if test="content != null and content != ''">#{content},</if>
+            <if test="coverImage != null">#{coverImage},</if>
+            <if test="isAnonymous != null">#{isAnonymous},</if>
+            <if test="auditStatus != null">#{auditStatus},</if>
+            <if test="aiCategory != null">#{aiCategory},</if>
+            <if test="aiAuditScore != null">#{aiAuditScore},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate()
+        </trim>
+    </insert>
+
+    <update id="updateCwPost" parameterType="com.ruoyi.system.domain.CwPost">
+        update cw_post
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="categoryId != null">category_id = #{categoryId},</if>
+            <if test="title != null and title != ''">title = #{title},</if>
+            <if test="content != null and content != ''">content = #{content},</if>
+            <if test="coverImage != null">cover_image = #{coverImage},</if>
+            <if test="isAnonymous != null">is_anonymous = #{isAnonymous},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </trim>
+        where post_id = #{postId}
+    </update>
+
+    <update id="updateAuditStatus" parameterType="com.ruoyi.system.domain.CwPost">
+        update cw_post set
+            audit_status = #{auditStatus},
+            audit_reason = #{auditReason},
+            update_time = sysdate()
+        where post_id = #{postId}
+    </update>
+
+    <update id="deleteCwPostById" parameterType="Long">
+        update cw_post set status = '1', update_time = sysdate() where post_id = #{postId}
+    </update>
+
+    <update id="deleteCwPostByIds" parameterType="Long">
+        update cw_post set status = '1', update_time = sysdate() where post_id in
+        <foreach collection="array" item="postId" open="(" separator="," close=")">
+            #{postId}
+        </foreach>
+    </update>
+
+    <update id="incrementViewCount" parameterType="Long">
+        update cw_post set view_count = view_count + 1 where post_id = #{postId}
+    </update>
+
+    <update id="updateLikeCount" parameterType="Long">
+        update cw_post set like_count = (select count(1) from cw_like where target_type = '0' and target_id = #{postId} and status = '0')
+        where post_id = #{postId}
+    </update>
+
+    <update id="updateCommentCount" parameterType="Long">
+        update cw_post set comment_count = (select count(1) from cw_comment where post_id = #{postId} and status = '0' and audit_status = '1')
+        where post_id = #{postId}
+    </update>
+
+</mapper>

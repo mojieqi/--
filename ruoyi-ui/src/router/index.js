@@ -167,6 +167,41 @@ export const dynamicRoutes = [
         meta: { title: '修改生成配置', activeMenu: '/tool/gen' }
       }
     ]
+  },
+  // 校园墙 - 帖子详情
+  {
+    path: '/campus/post/detail',
+    component: Layout,
+    hidden: true,
+    children: [
+      {
+        path: ':postId(\\d+)',
+        component: () => import('@/views/campus/post/detail'),
+        name: 'CampusPostDetail',
+        meta: { title: '帖子详情', activeMenu: '/campus/post' }
+      }
+    ]
+  },
+  // 校园墙 - 发布帖子
+  {
+    path: '/campus/post/edit',
+    component: Layout,
+    hidden: true,
+    permissions: ['campus:post:add'],
+    children: [
+      {
+        path: '',
+        component: () => import('@/views/campus/post/edit'),
+        name: 'CampusPostAdd',
+        meta: { title: '发布帖子', activeMenu: '/campus/post' }
+      },
+      {
+        path: ':postId(\\d+)',
+        component: () => import('@/views/campus/post/edit'),
+        name: 'CampusPostEdit',
+        meta: { title: '编辑帖子', activeMenu: '/campus/post' }
+      }
+    ]
   }
 ]
 
