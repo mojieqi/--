@@ -66,6 +66,27 @@
         <comment-section :post-id="postId" ref="commentSection" />
       </el-card>
 
+      <!-- 相关推荐 -->
+      <el-card v-if="relatedPosts.length > 0" class="related-card" shadow="never">
+        <div slot="header">
+          <span><i class="el-icon-connection"></i> 相关推荐</span>
+        </div>
+        <div class="related-list">
+          <div
+            v-for="rp in relatedPosts"
+            :key="rp.postId"
+            class="related-item"
+            @click="goDetail(rp.postId)"
+          >
+            <span class="related-title">{{ rp.title }}</span>
+            <span class="related-stats">
+              <i class="el-icon-view"></i> {{ rp.viewCount || 0 }}
+              <i class="el-icon-star-off"></i> {{ rp.likeCount || 0 }}
+            </span>
+          </div>
+        </div>
+      </el-card>
+
       <!-- 举报弹窗 -->
       <report-dialog
         :visible.sync="reportVisible"
@@ -86,6 +107,7 @@
 <script>
 import { getPost, delPost } from '@/api/campus/post'
 import { toggleLike } from '@/api/campus/like'
+import { getRelated } from '@/api/campus/recommend'
 import CommentSection from '@/views/campus/comment/CommentSection'
 import ReportDialog from '@/views/campus/report/ReportDialog'
 
@@ -97,7 +119,8 @@ export default {
       loading: true,
       post: null,
       isOwner: false,
-      reportVisible: false
+      reportVisible: false,
+      relatedPosts: []
     }
   },
   computed: {
@@ -122,12 +145,25 @@ export default {
         this.isOwner = currentUser && this.post.createBy === currentUser
         this.loading = false
         document.title = (this.post ? this.post.title : '帖子详情') + ' - 校园墙'
+        // 加载相关推荐
+        this.loadRelated()
       }).catch(() => {
         this.loading = false
       })
     },
     goBack() {
       this.$router.push('/campus/post')
+    },
+    goDetail(postId) {
+      this.$router.push('/campus/post/detail/' + postId)
+    },
+    async loadRelated() {
+      try {
+        const res = await getRelated(this.postId, { limit: 6 })
+        this.relatedPosts = res.data || []
+      } catch (e) {
+        console.error('加载相关推荐失败', e)
+      }
     },
     handleEdit() {
       this.$router.push('/campus/post/edit/' + this.postId)
@@ -257,6 +293,39 @@ export default {
   text-align: center;
   padding: 40px 0;
   color: #c0c4cc;
+}
+
+.related-card {
+  margin-top: 16px;
+  border-radius: 8px;
+}
+
+.related-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.related-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #f5f5f5;
+  cursor: pointer;
+  transition: color .15s;
+}
+.related-item:last-child { border-bottom: none; }
+.related-item:hover .related-title { color: #667eea; }
+
+.related-title {
+  flex: 1; min-width: 0;
+  font-size: 14px; color: #303133;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.related-stats {
+  flex-shrink: 0; margin-left: 16px;
+  font-size: 12px; color: #c0c4cc;
+  display: flex; gap: 6px;
 }
 
 .not-found {
