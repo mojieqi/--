@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.AiMessageKbRefMapper">
+
+    <resultMap type="com.ruoyi.system.domain.AiMessageKbRef" id="AiMessageKbRefResult">
+        <result property="refId" column="ref_id"/>
+        <result property="messageId" column="message_id"/>
+        <result property="chunkId" column="chunk_id"/>
+        <result property="relevanceScore" column="relevance_score"/>
+    </resultMap>
+
+    <select id="selectAiMessageKbRefByMessageId" parameterType="Long" resultMap="AiMessageKbRefResult">
+        select ref_id, message_id, chunk_id, relevance_score
+        from ai_message_kb_ref
+        where message_id = #{messageId}
+        order by relevance_score desc
+    </select>
+
+    <insert id="insertAiMessageKbRef" parameterType="com.ruoyi.system.domain.AiMessageKbRef" useGeneratedKeys="true" keyProperty="refId">
+        insert into ai_message_kb_ref
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="messageId != null">message_id,</if>
+            <if test="chunkId != null">chunk_id,</if>
+            <if test="relevanceScore != null">relevance_score,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="messageId != null">#{messageId},</if>
+            <if test="chunkId != null">#{chunkId},</if>
+            <if test="relevanceScore != null">#{relevanceScore},</if>
+        </trim>
+    </insert>
+
+    <insert id="batchInsertAiMessageKbRef" parameterType="list">
+        insert into ai_message_kb_ref (message_id, chunk_id, relevance_score) values
+        <foreach collection="list" item="item" separator=",">
+            (#{item.messageId}, #{item.chunkId}, #{item.relevanceScore})
+        </foreach>
+    </insert>
+
+    <delete id="deleteAiMessageKbRefByMessageId" parameterType="Long">
+        delete from ai_message_kb_ref where message_id = #{messageId}
+    </delete>
+
+</mapper>

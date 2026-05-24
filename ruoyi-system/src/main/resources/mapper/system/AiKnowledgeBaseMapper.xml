@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.AiKnowledgeBaseMapper">
+
+    <resultMap type="com.ruoyi.system.domain.AiKnowledgeBase" id="AiKnowledgeBaseResult">
+        <result property="kbId" column="kb_id"/>
+        <result property="kbName" column="kb_name"/>
+        <result property="kbDesc" column="kb_desc"/>
+        <result property="embeddingModel" column="embedding_model"/>
+        <result property="docCount" column="doc_count"/>
+        <result property="chunkCount" column="chunk_count"/>
+        <result property="status" column="status"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="selectKbVo">
+        select kb_id, kb_name, kb_desc, embedding_model, doc_count, chunk_count,
+               status, create_by, create_time, update_by, update_time
+        from ai_knowledge_base
+    </sql>
+
+    <select id="selectAiKnowledgeBaseById" parameterType="Long" resultMap="AiKnowledgeBaseResult">
+        <include refid="selectKbVo"/>
+        where kb_id = #{kbId}
+    </select>
+
+    <select id="selectAiKnowledgeBaseList" parameterType="com.ruoyi.system.domain.AiKnowledgeBase" resultMap="AiKnowledgeBaseResult">
+        <include refid="selectKbVo"/>
+        <where>
+            <if test="kbName != null and kbName != ''">
+                and kb_name like concat('%', #{kbName}, '%')
+            </if>
+            <if test="status != null and status != ''">
+                and status = #{status}
+            </if>
+        </where>
+        order by kb_id desc
+    </select>
+
+    <insert id="insertAiKnowledgeBase" parameterType="com.ruoyi.system.domain.AiKnowledgeBase" useGeneratedKeys="true" keyProperty="kbId">
+        insert into ai_knowledge_base
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="kbName != null and kbName != ''">kb_name,</if>
+            <if test="kbDesc != null">kb_desc,</if>
+            <if test="embeddingModel != null">embedding_model,</if>
+            <if test="status != null">status,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="kbName != null and kbName != ''">#{kbName},</if>
+            <if test="kbDesc != null">#{kbDesc},</if>
+            <if test="embeddingModel != null">#{embeddingModel},</if>
+            <if test="status != null">#{status},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate()
+        </trim>
+    </insert>
+
+    <update id="updateAiKnowledgeBase" parameterType="com.ruoyi.system.domain.AiKnowledgeBase">
+        update ai_knowledge_base
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="kbName != null and kbName != ''">kb_name = #{kbName},</if>
+            <if test="kbDesc != null">kb_desc = #{kbDesc},</if>
+            <if test="embeddingModel != null">embedding_model = #{embeddingModel},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            update_time = sysdate()
+        </trim>
+        where kb_id = #{kbId}
+    </update>
+
+    <delete id="deleteAiKnowledgeBaseById" parameterType="Long">
+        delete from ai_knowledge_base where kb_id = #{kbId}
+    </delete>
+
+    <delete id="deleteAiKnowledgeBaseByIds" parameterType="String">
+        delete from ai_knowledge_base where kb_id in
+        <foreach collection="array" item="kbId" open="(" separator="," close=")">
+            #{kbId}
+        </foreach>
+    </delete>
+
+    <update id="updateDocCount" parameterType="Long">
+        update ai_knowledge_base
+        set doc_count = (select count(1) from ai_knowledge_document where kb_id = #{kbId} and status = '1'),
+            chunk_count = (select count(1) from ai_document_chunk where kb_id = #{kbId}),
+            update_time = sysdate()
+        where kb_id = #{kbId}
+    </update>
+
+</mapper>

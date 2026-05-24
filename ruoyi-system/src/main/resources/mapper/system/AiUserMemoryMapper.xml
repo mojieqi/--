@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.AiUserMemoryMapper">
+
+    <resultMap type="com.ruoyi.system.domain.AiUserMemory" id="AiUserMemoryResult">
+        <result property="memoryId" column="memory_id"/>
+        <result property="userId" column="user_id"/>
+        <result property="memoryKey" column="memory_key"/>
+        <result property="memoryValue" column="memory_value"/>
+        <result property="importance" column="importance"/>
+        <result property="lastAccess" column="last_access"/>
+        <result property="accessCount" column="access_count"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <sql id="selectMemoryVo">
+        select memory_id, user_id, memory_key, memory_value, importance,
+               last_access, access_count, create_time
+        from ai_user_memory
+    </sql>
+
+    <select id="selectAiUserMemoryById" parameterType="Long" resultMap="AiUserMemoryResult">
+        <include refid="selectMemoryVo"/>
+        where memory_id = #{memoryId}
+    </select>
+
+    <select id="selectAiUserMemoryList" parameterType="com.ruoyi.system.domain.AiUserMemory" resultMap="AiUserMemoryResult">
+        <include refid="selectMemoryVo"/>
+        <where>
+            <if test="userId != null">and user_id = #{userId}</if>
+            <if test="memoryKey != null and memoryKey != ''">and memory_key like concat('%', #{memoryKey}, '%')</if>
+        </where>
+        order by importance desc, last_access desc
+    </select>
+
+    <select id="selectAiUserMemoryByUserId" parameterType="Long" resultMap="AiUserMemoryResult">
+        <include refid="selectMemoryVo"/>
+        where user_id = #{userId}
+        order by importance desc, last_access desc
+        limit 50
+    </select>
+
+    <insert id="insertAiUserMemory" parameterType="com.ruoyi.system.domain.AiUserMemory" useGeneratedKeys="true" keyProperty="memoryId">
+        insert into ai_user_memory
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="userId != null">user_id,</if>
+            <if test="memoryKey != null">memory_key,</if>
+            <if test="memoryValue != null">memory_value,</if>
+            <if test="importance != null">importance,</if>
+            <if test="lastAccess != null">last_access,</if>
+            <if test="accessCount != null">access_count,</if>
+            create_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="userId != null">#{userId},</if>
+            <if test="memoryKey != null">#{memoryKey},</if>
+            <if test="memoryValue != null">#{memoryValue},</if>
+            <if test="importance != null">#{importance},</if>
+            <if test="lastAccess != null">#{lastAccess},</if>
+            <if test="accessCount != null">#{accessCount},</if>
+            sysdate()
+        </trim>
+    </insert>
+
+    <update id="updateAiUserMemory" parameterType="com.ruoyi.system.domain.AiUserMemory">
+        update ai_user_memory
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="memoryKey != null">memory_key = #{memoryKey},</if>
+            <if test="memoryValue != null">memory_value = #{memoryValue},</if>
+            <if test="importance != null">importance = #{importance},</if>
+            <if test="lastAccess != null">last_access = #{lastAccess},</if>
+            <if test="accessCount != null">access_count = #{accessCount},</if>
+        </trim>
+        where memory_id = #{memoryId}
+    </update>
+
+    <delete id="deleteAiUserMemoryById" parameterType="Long">
+        delete from ai_user_memory where memory_id = #{memoryId}
+    </delete>
+
+    <delete id="deleteAiUserMemoryByIds" parameterType="String">
+        delete from ai_user_memory where memory_id in
+        <foreach collection="array" item="memoryId" open="(" separator="," close=")">
+            #{memoryId}
+        </foreach>
+    </delete>
+
+</mapper>

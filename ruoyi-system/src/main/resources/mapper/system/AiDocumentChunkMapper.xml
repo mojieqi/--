@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.AiDocumentChunkMapper">
+
+    <resultMap type="com.ruoyi.system.domain.AiDocumentChunk" id="AiDocumentChunkResult">
+        <result property="chunkId" column="chunk_id"/>
+        <result property="docId" column="doc_id"/>
+        <result property="kbId" column="kb_id"/>
+        <result property="chunkIndex" column="chunk_index"/>
+        <result property="chunkContent" column="chunk_content"/>
+        <result property="chunkVector" column="chunk_vector"/>
+        <result property="tokenCount" column="token_count"/>
+    </resultMap>
+
+    <sql id="selectChunkVo">
+        select chunk_id, doc_id, kb_id, chunk_index, chunk_content, chunk_vector, token_count
+        from ai_document_chunk
+    </sql>
+
+    <select id="selectAiDocumentChunkById" parameterType="Long" resultMap="AiDocumentChunkResult">
+        <include refid="selectChunkVo"/>
+        where chunk_id = #{chunkId}
+    </select>
+
+    <select id="selectAiDocumentChunkByDocId" parameterType="Long" resultMap="AiDocumentChunkResult">
+        <include refid="selectChunkVo"/>
+        where doc_id = #{docId}
+        order by chunk_index asc
+    </select>
+
+    <insert id="batchInsertAiDocumentChunk" parameterType="java.util.List">
+        insert into ai_document_chunk (doc_id, kb_id, chunk_index, chunk_content, token_count)
+        values
+        <foreach collection="list" item="item" separator=",">
+            (#{item.docId}, #{item.kbId}, #{item.chunkIndex}, #{item.chunkContent}, #{item.tokenCount})
+        </foreach>
+    </insert>
+
+    <delete id="deleteAiDocumentChunkByDocId" parameterType="Long">
+        delete from ai_document_chunk where doc_id = #{docId}
+    </delete>
+
+    <delete id="deleteAiDocumentChunkByKbId" parameterType="Long">
+        delete from ai_document_chunk where kb_id = #{kbId}
+    </delete>
+
+    <select id="searchChunks" parameterType="com.ruoyi.system.domain.AiDocumentChunk" resultMap="AiDocumentChunkResult">
+        <include refid="selectChunkVo"/>
+        <where>
+            <if test="kbId != null">
+                and kb_id = #{kbId}
+            </if>
+            <if test="chunkContent != null and chunkContent != ''">
+                and chunk_content like concat('%', #{chunkContent}, '%')
+            </if>
+        </where>
+        order by chunk_index asc
+        limit 50
+    </select>
+
+    <select id="selectChunksByKbId" parameterType="Long" resultMap="AiDocumentChunkResult">
+        <include refid="selectChunkVo"/>
+        where kb_id = #{kbId}
+        order by chunk_index asc
+    </select>
+
+    <update id="updateChunkVector">
+        update ai_document_chunk
+        set chunk_vector = #{chunkVector}
+        where chunk_id = #{chunkId}
+    </update>
+
+</mapper>

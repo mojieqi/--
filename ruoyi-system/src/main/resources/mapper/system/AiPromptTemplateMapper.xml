@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.AiPromptTemplateMapper">
+
+    <resultMap type="com.ruoyi.system.domain.AiPromptTemplate" id="AiPromptTemplateResult">
+        <result property="templateId" column="template_id"/>
+        <result property="templateName" column="template_name"/>
+        <result property="templateType" column="template_type"/>
+        <result property="sceneCode" column="scene_code"/>
+        <result property="sceneName" column="scene_name"/>
+        <result property="promptContent" column="prompt_content"/>
+        <result property="variables" column="variables"/>
+        <result property="systemPromptId" column="system_prompt_id"/>
+        <result property="status" column="status"/>
+        <result property="isBuiltin" column="is_builtin"/>
+        <result property="sort" column="sort"/>
+        <result property="remark" column="remark"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateBy" column="update_by"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="selectPromptVo">
+        select template_id, template_name, template_type, scene_code, scene_name,
+               prompt_content, variables, system_prompt_id,
+               status, is_builtin, sort, remark, create_by, create_time, update_by, update_time
+        from ai_prompt_template
+    </sql>
+
+    <select id="selectAiPromptTemplateList" parameterType="com.ruoyi.system.domain.vo.AiPromptTemplateQuery" resultMap="AiPromptTemplateResult">
+        <include refid="selectPromptVo"/>
+        <where>
+            <if test="templateName != null and templateName != ''">
+                AND template_name like concat('%', #{templateName}, '%')
+            </if>
+            <if test="templateType != null and templateType != ''">
+                AND template_type = #{templateType}
+            </if>
+            <if test="sceneCode != null and sceneCode != ''">
+                AND scene_code = #{sceneCode}
+            </if>
+            <if test="sceneName != null and sceneName != ''">
+                AND scene_name like concat('%', #{sceneName}, '%')
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="isBuiltin != null and isBuiltin != ''">
+                AND is_builtin = #{isBuiltin}
+            </if>
+        </where>
+        order by sort asc, create_time desc
+    </select>
+
+    <select id="selectAiPromptTemplateById" parameterType="Long" resultMap="AiPromptTemplateResult">
+        <include refid="selectPromptVo"/>
+        where template_id = #{templateId}
+    </select>
+
+    <select id="selectBySceneCode" parameterType="String" resultMap="AiPromptTemplateResult">
+        <include refid="selectPromptVo"/>
+        where scene_code = #{sceneCode} and status = '0'
+        order by template_type asc, sort asc
+    </select>
+
+    <select id="selectActiveSystemPrompts" resultMap="AiPromptTemplateResult">
+        <include refid="selectPromptVo"/>
+        where template_type = '0' and status = '0'
+        order by sort asc
+    </select>
+
+    <insert id="insertAiPromptTemplate" parameterType="com.ruoyi.system.domain.AiPromptTemplate" useGeneratedKeys="true" keyProperty="templateId">
+        insert into ai_prompt_template
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="templateName != null and templateName != ''">template_name,</if>
+            <if test="templateType != null">template_type,</if>
+            <if test="sceneCode != null">scene_code,</if>
+            <if test="sceneName != null">scene_name,</if>
+            <if test="promptContent != null">prompt_content,</if>
+            <if test="variables != null">variables,</if>
+            <if test="systemPromptId != null">system_prompt_id,</if>
+            <if test="status != null">status,</if>
+            <if test="isBuiltin != null">is_builtin,</if>
+            <if test="sort != null">sort,</if>
+            <if test="remark != null">remark,</if>
+            <if test="createBy != null">create_by,</if>
+            <if test="createTime != null">create_time,</if>
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="templateName != null and templateName != ''">#{templateName},</if>
+            <if test="templateType != null">#{templateType},</if>
+            <if test="sceneCode != null">#{sceneCode},</if>
+            <if test="sceneName != null">#{sceneName},</if>
+            <if test="promptContent != null">#{promptContent},</if>
+            <if test="variables != null">#{variables},</if>
+            <if test="systemPromptId != null">#{systemPromptId},</if>
+            <if test="status != null">#{status},</if>
+            <if test="isBuiltin != null">#{isBuiltin},</if>
+            <if test="sort != null">#{sort},</if>
+            <if test="remark != null">#{remark},</if>
+            <if test="createBy != null">#{createBy},</if>
+            <if test="createTime != null">now(),</if>
+        </trim>
+    </insert>
+
+    <update id="updateAiPromptTemplate" parameterType="com.ruoyi.system.domain.AiPromptTemplate">
+        update ai_prompt_template
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="templateName != null and templateName != ''">template_name = #{templateName},</if>
+            <if test="templateType != null">template_type = #{templateType},</if>
+            <if test="sceneCode != null">scene_code = #{sceneCode},</if>
+            <if test="sceneName != null">scene_name = #{sceneName},</if>
+            <if test="promptContent != null">prompt_content = #{promptContent},</if>
+            <if test="variables != null">variables = #{variables},</if>
+            <if test="systemPromptId != null">system_prompt_id = #{systemPromptId},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="isBuiltin != null">is_builtin = #{isBuiltin},</if>
+            <if test="sort != null">sort = #{sort},</if>
+            <if test="remark != null">remark = #{remark},</if>
+            <if test="updateBy != null">update_by = #{updateBy},</if>
+            <if test="updateTime != null">update_time = now(),</if>
+        </trim>
+        where template_id = #{templateId}
+    </update>
+
+    <delete id="deleteAiPromptTemplateById" parameterType="Long">
+        delete from ai_prompt_template where template_id = #{templateId}
+    </delete>
+
+    <delete id="deleteAiPromptTemplateByIds" parameterType="Long">
+        delete from ai_prompt_template where template_id in
+        <foreach item="templateId" collection="array" open="(" separator="," close=")">
+            #{templateId}
+        </foreach>
+    </delete>
+
+</mapper>

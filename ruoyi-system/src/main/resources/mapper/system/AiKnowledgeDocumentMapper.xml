@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.AiKnowledgeDocumentMapper">
+
+    <resultMap type="com.ruoyi.system.domain.AiKnowledgeDocument" id="AiKnowledgeDocumentResult">
+        <result property="docId" column="doc_id"/>
+        <result property="kbId" column="kb_id"/>
+        <result property="docName" column="doc_name"/>
+        <result property="docType" column="doc_type"/>
+        <result property="filePath" column="file_path"/>
+        <result property="fileSize" column="file_size"/>
+        <result property="contentText" column="content_text"/>
+        <result property="chunkCount" column="chunk_count"/>
+        <result property="status" column="status"/>
+        <result property="errorMsg" column="error_msg"/>
+        <result property="createBy" column="create_by"/>
+        <result property="createTime" column="create_time"/>
+    </resultMap>
+
+    <sql id="selectDocVo">
+        select d.doc_id, d.kb_id, d.doc_name, d.doc_type, d.file_path, d.file_size,
+               d.content_text, d.chunk_count, d.status, d.error_msg, d.create_by, d.create_time
+        from ai_knowledge_document d
+    </sql>
+
+    <select id="selectAiKnowledgeDocumentById" parameterType="Long" resultMap="AiKnowledgeDocumentResult">
+        <include refid="selectDocVo"/>
+        where d.doc_id = #{docId}
+    </select>
+
+    <select id="selectAiKnowledgeDocumentList" parameterType="com.ruoyi.system.domain.AiKnowledgeDocument" resultMap="AiKnowledgeDocumentResult">
+        <include refid="selectDocVo"/>
+        <where>
+            <if test="kbId != null">
+                and d.kb_id = #{kbId}
+            </if>
+            <if test="docName != null and docName != ''">
+                and d.doc_name like concat('%', #{docName}, '%')
+            </if>
+            <if test="status != null and status != ''">
+                and d.status = #{status}
+            </if>
+        </where>
+        order by d.doc_id desc
+    </select>
+
+    <insert id="insertAiKnowledgeDocument" parameterType="com.ruoyi.system.domain.AiKnowledgeDocument" useGeneratedKeys="true" keyProperty="docId">
+        insert into ai_knowledge_document
+        <trim prefix="(" suffix=")" suffixOverrides=",">
+            <if test="kbId != null">kb_id,</if>
+            <if test="docName != null">doc_name,</if>
+            <if test="docType != null">doc_type,</if>
+            <if test="filePath != null">file_path,</if>
+            <if test="fileSize != null">file_size,</if>
+            <if test="status != null">status,</if>
+            <if test="createBy != null">create_by,</if>
+            create_time
+        </trim>
+        <trim prefix="values (" suffix=")" suffixOverrides=",">
+            <if test="kbId != null">#{kbId},</if>
+            <if test="docName != null">#{docName},</if>
+            <if test="docType != null">#{docType},</if>
+            <if test="filePath != null">#{filePath},</if>
+            <if test="fileSize != null">#{fileSize},</if>
+            <if test="status != null">#{status},</if>
+            <if test="createBy != null">#{createBy},</if>
+            sysdate()
+        </trim>
+    </insert>
+
+    <update id="updateAiKnowledgeDocument" parameterType="com.ruoyi.system.domain.AiKnowledgeDocument">
+        update ai_knowledge_document
+        <trim prefix="SET" suffixOverrides=",">
+            <if test="contentText != null">content_text = #{contentText},</if>
+            <if test="chunkCount != null">chunk_count = #{chunkCount},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="errorMsg != null">error_msg = #{errorMsg},</if>
+        </trim>
+        where doc_id = #{docId}
+    </update>
+
+    <delete id="deleteAiKnowledgeDocumentById" parameterType="Long">
+        delete from ai_knowledge_document where doc_id = #{docId}
+    </delete>
+
+    <delete id="deleteAiKnowledgeDocumentByIds" parameterType="String">
+        delete from ai_knowledge_document where doc_id in
+        <foreach collection="array" item="docId" open="(" separator="," close=")">
+            #{docId}
+        </foreach>
+    </delete>
+
+    <delete id="deleteAiKnowledgeDocumentByKbId" parameterType="Long">
+        delete from ai_knowledge_document where kb_id = #{kbId}
+    </delete>
+
+</mapper>
