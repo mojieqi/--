@@ -32,6 +32,9 @@ public class DateCalcTool extends AbstractTool {
 
     private static final Logger log = LoggerFactory.getLogger(DateCalcTool.class);
 
+    /** 工具使用的时区，硬编码为东八区，确保与用户本地时间一致 */
+    private static final ZoneId TIMEZONE = ZoneId.of("Asia/Shanghai");
+
     private static final DateTimeFormatter DATE_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     private static final String[] WEEKDAY_NAMES = {
             "星期一", "星期二", "星期三", "星期四", "星期五", "星期六", "星期日"
@@ -189,13 +192,13 @@ public class DateCalcTool extends AbstractTool {
         switch (dateStr.toLowerCase()) {
             case "today":
             case "今天":
-                return LocalDate.now();
+                return LocalDate.now(TIMEZONE);
             case "tomorrow":
             case "明天":
-                return LocalDate.now().plusDays(1);
+                return LocalDate.now(TIMEZONE).plusDays(1);
             case "yesterday":
             case "昨天":
-                return LocalDate.now().minusDays(1);
+                return LocalDate.now(TIMEZONE).minusDays(1);
             default:
                 return LocalDate.parse(dateStr, DATE_FMT);
         }

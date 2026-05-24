@@ -5,6 +5,9 @@ import com.ruoyi.system.domain.AiConversationMessage;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -87,6 +90,10 @@ public class PromptBuilder {
             content.append("你是一个AI校园墙智能助手，可以回答校园相关的问题，帮助用户解决校园生活中的各种需求。");
         }
 
+        // 注入当前日期时间与时区(确保LLM知道"现在"是什么时间)
+        content.append("\n\n【当前时间】\n");
+        content.append(buildCurrentTimeInfo());
+
         // 附加早期对话摘要
         if (summary != null && !summary.isEmpty()) {
             content.append("\n\n【历史对话摘要】\n").append(summary);
@@ -130,6 +137,33 @@ public class PromptBuilder {
         }
 
         messages.add(jsonMsg);
+    }
+
+    /**
+     * 构建当前时间信息字符串，注入到系统提示词中。
+     * 确保 LLM 知道"现在"是什么时间，而不是使用训练截止日期。
+     */
+    private String buildCurrentTimeInfo() {
+        ZonedDateTime now = ZonedDateTime.now(ZoneId.of("Asia/Shanghai"));
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        String dayOfWeek = getChineseDayOfWeek(now.getDayOfWeek());
+        return String.format("- 日期: %s\n- 时间: %s\n- 星期: %s\n- 时区: Asia/Shanghai (UTC+8)",
+                now.format(DateTimeFormatter.ISO_LOCAL_DATE),
+                now.format(fmt),
+                dayOfWeek);
+    }
+
+    private String getChineseDayOfWeek(DayOfWeek day) {
+        switch (day) {
+            case MONDAY:    return "星期一";
+            case TUESDAY:   return "星期二";
+            case WEDNESDAY: return "星期三";
+            case THURSDAY:  return "星期四";
+            case FRIDAY:    return "星期五";
+            case SATURDAY:  return "星期六";
+            case SUNDAY:    return "星期日";
+            default:        return "";
+        }
     }
 
     private void buildUserMessage(JSONArray messages, String userMessage) {
