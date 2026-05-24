@@ -138,7 +138,7 @@ public class AiPromptTemplate extends BaseEntity {
                 ", templateName='" + templateName + '\'' +
                 ", templateType='" + templateType + '\'' +
                 ", sceneCode='" + sceneCode + '\'' +
-                ", templateType='" + templateType + '\'' +
+                ", sceneName='" + sceneName + '\'' +
                 ", status='" + status + '\'' +
                 '}';
     }
