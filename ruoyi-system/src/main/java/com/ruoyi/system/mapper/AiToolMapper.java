@@ -1,6 +1,7 @@
 package com.ruoyi.system.mapper;
 
 import java.util.List;
+import org.apache.ibatis.annotations.Param;
 import com.ruoyi.system.domain.AiTool;
 
 /**
@@ -72,4 +73,16 @@ public interface AiToolMapper {
      * @return 结果
      */
     public int deleteAiToolByIds(Long[] toolIds);
+
+    /**
+     * 批量变更工具状态 (Phase 4.5 前端工具管理)
+     *
+     * @param ids 工具ID数组
+     * @param status 目标状态(0启用 1停用)
+     * @param updateBy 更新者
+     * @return 结果
+     */
+    public int updateStatusByIds(@Param("ids") Long[] ids,
+                                  @Param("status") String status,
+                                  @Param("updateBy") String updateBy);
 }

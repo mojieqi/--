@@ -97,4 +97,14 @@ public class AiToolController extends BaseController {
     public AjaxResult remove(@PathVariable Long[] toolIds) {
         return toAjax(aiToolService.deleteAiToolByIds(toolIds));
     }
+
+    /**
+     * 批量变更工具启用/停用状态 (Phase 4.5)
+     */
+    @PreAuthorize("@ss.hasPermi('ai:tool:changeStatus')")
+    @Log(title = "AI工具管理", businessType = BusinessType.UPDATE)
+    @PutMapping("/changeStatus")
+    public AjaxResult changeStatus(@RequestBody AiTool tool) {
+        return toAjax(aiToolService.changeStatus(tool.getToolIds(), tool.getStatus()));
+    }
 }

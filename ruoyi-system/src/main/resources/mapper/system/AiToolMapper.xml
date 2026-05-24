@@ -120,4 +120,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         </foreach>
     </delete>
 
+    <update id="updateStatusByIds">
+        update ai_tool set status = #{status}, update_by = #{updateBy}, update_time = now()
+        where tool_id in
+        <foreach item="id" collection="ids" open="(" separator="," close=")">
+            #{id}
+        </foreach>
+    </update>
+
 </mapper>

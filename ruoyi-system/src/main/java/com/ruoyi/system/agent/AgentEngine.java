@@ -2,6 +2,7 @@ package com.ruoyi.system.agent;
 
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
+import com.alibaba.fastjson2.JSONObject;
 import com.ruoyi.system.agent.LlmCaller.ToolCall;
 import com.ruoyi.system.agent.tool.ToolRegistry;
 import com.ruoyi.system.domain.*;

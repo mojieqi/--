@@ -37,6 +37,9 @@ public class AiTool extends BaseEntity {
     /** 显示排序 */
     private Integer sort;
 
+    /** 工具ID数组(批量操作使用) */
+    private Long[] toolIds;
+
     public Long getToolId() {
         return toolId;
     }
@@ -107,6 +110,14 @@ public class AiTool extends BaseEntity {
 
     public void setSort(Integer sort) {
         this.sort = sort;
+    }
+
+    public Long[] getToolIds() {
+        return toolIds;
+    }
+
+    public void setToolIds(Long[] toolIds) {
+        this.toolIds = toolIds;
     }
 
     @Override

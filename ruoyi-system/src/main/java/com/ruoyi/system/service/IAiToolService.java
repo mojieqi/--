@@ -64,4 +64,13 @@ public interface IAiToolService {
      * @return 结果
      */
     public int deleteAiToolByIds(Long[] toolIds);
+
+    /**
+     * 批量变更工具启用/停用状态 (Phase 4.5)
+     *
+     * @param ids 工具ID数组
+     * @param status 目标状态(0启用 1停用)
+     * @return 结果
+     */
+    public int changeStatus(Long[] ids, String status);
 }

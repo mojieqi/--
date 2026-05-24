@@ -1,6 +1,8 @@
 package com.ruoyi.system.service.impl;
 
 import java.util.List;
+import jakarta.annotation.Resource;
+import com.ruoyi.common.utils.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.ruoyi.common.utils.StringUtils;
@@ -90,6 +92,21 @@ public class AiToolServiceImpl implements IAiToolService {
             count += deleteAiToolById(toolId);
         }
         return count;
+    }
+
+    /**
+     * 批量变更工具启用/停用状态 (Phase 4.5)
+     * 内置工具可变更状态，但不可删除
+     */
+    @Override
+    public int changeStatus(Long[] ids, String status) {
+        for (Long id : ids) {
+            AiTool tool = aiToolMapper.selectAiToolById(id);
+            if (tool == null) {
+                throw new RuntimeException("工具ID " + id + " 不存在");
+            }
+        }
+        return aiToolMapper.updateStatusByIds(ids, status, SecurityUtils.getUsername());
     }
 
     /**
