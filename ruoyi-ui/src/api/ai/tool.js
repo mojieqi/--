@@ -29,3 +29,8 @@ export function delTool(toolIds) {
 export function changeToolStatus(data) {
   return request({ url: '/ai/tool/changeStatus', method: 'put', data })
 }
+
+// 查询工具注册状态 (Phase 4.5 前后端联动)
+export function registryStatus() {
+  return request({ url: '/ai/tool/registry-status', method: 'get' })
+}

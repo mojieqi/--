@@ -1,6 +1,7 @@
 package com.ruoyi.system.controller.system;
 
 import java.util.List;
+import java.util.Map;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -106,5 +107,16 @@ public class AiToolController extends BaseController {
     @PutMapping("/changeStatus")
     public AjaxResult changeStatus(@RequestBody AiTool tool) {
         return toAjax(aiToolService.changeStatus(tool.getToolIds(), tool.getStatus()));
+    }
+
+    /**
+     * 查询工具注册状态 (Phase 4.5 前后端联动)
+     * 返回每个工具的 ToolRegistry 加载状态: REGISTERED / CLASS_MISSING / DISABLED
+     */
+    @PreAuthorize("@ss.hasPermi('ai:tool:list')")
+    @GetMapping("/registry-status")
+    public AjaxResult registryStatus() {
+        Map<String, Object> data = aiToolService.getRegistryStatus();
+        return success(data);
     }
 }

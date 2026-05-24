@@ -23,6 +23,20 @@
       </template>
     </el-alert>
 
+    <!-- 注册状态摘要栏 (Phase 4.5 前后端联动) -->
+    <div v-if="registryData" class="registry-bar" :class="registryStatusClass">
+      <div class="registry-summary">
+        <i :class="registryStatusIcon"/>
+        <span class="registry-text">
+          <strong>ToolRegistry:</strong> {{ registryData.registeredCount }}/{{ registryData.totalEnabled }} 工具可注册
+          <template v-if="registryData.failedCount > 0">
+            · <span class="registry-warn">{{ registryData.failedCount }} 个处理器类缺失</span>
+          </template>
+        </span>
+      </div>
+      <el-button type="text" icon="el-icon-refresh" @click="fetchRegistryStatus" :loading="registryLoading" style="font-size:13px;">刷新</el-button>
+    </div>
+
     <!-- 工具卡片网格 -->
     <div v-loading="loading" class="tool-card-grid">
       <div class="tool-card" v-for="item in toolList" :key="item.toolId">
@@ -31,7 +45,10 @@
           <span class="card-title">{{ item.toolName }}</span>
           <div class="card-badges">
             <el-tag v-if="item.isBuiltin === '1'" size="mini" type="warning" effect="plain">内置</el-tag>
-            <el-tag size="mini" :type="item.status === '0' ? 'success' : 'info'">{{ item.status === '0' ? '已启用' : '已停用' }}</el-tag>
+            <el-tag size="mini" :type="getRegistryBadge(item).statusType"
+              :effect="getRegistryBadge(item).effect || 'plain'">
+              {{ getRegistryBadge(item).text }}
+            </el-tag>
           </div>
         </div>
 
@@ -43,6 +60,25 @@
         <!-- 工具描述 -->
         <div class="card-body">
           <p class="card-desc">{{ item.toolDesc || '暂无描述' }}</p>
+        </div>
+
+        <!-- Schema 参数预览 (Phase 4.5) -->
+        <div class="card-schema-toggle" v-if="item.functionSchema" @click="toggleSchemaParams(item)">
+          <i :class="item._schemaExpanded ? 'el-icon-arrow-down' : 'el-icon-arrow-right'"/>
+          <span>参数详情 ({{ parseSchemaParamCount(item.functionSchema) }} 个参数)</span>
+        </div>
+        <div class="card-schema-params" v-if="item._schemaExpanded && item.functionSchema">
+          <table class="param-mini-table">
+            <thead><tr><th>参数名</th><th>类型</th><th>必填</th><th>描述</th></tr></thead>
+            <tbody>
+              <tr v-for="p in parseSchemaParams(item.functionSchema)" :key="p.name">
+                <td><code>{{ p.name }}</code></td>
+                <td><span class="param-type">{{ p.type }}</span></td>
+                <td><el-tag size="mini" :type="p.required ? 'danger' : 'info'">{{ p.required ? '是' : '否' }}</el-tag></td>
+                <td class="param-desc">{{ p.description || '-' }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
         <!-- 处理器类 -->
@@ -59,6 +95,7 @@
 
         <!-- 操作区 -->
         <div class="card-actions">
+          <el-button type="text" icon="el-icon-document-copy" @click="copyToolCode(item)">复制</el-button>
           <el-button type="text" icon="el-icon-switch-button" @click="handleStatusToggle(item)"
             v-hasPermi="['ai:tool:changeStatus']">
             {{ item.status === '0' ? '停用' : '启用' }}
@@ -96,7 +133,13 @@
           <span class="form-tip">继承 AbstractTool 的完整类路径，内置工具不可修改</span>
         </el-form-item>
         <el-form-item label="Schema定义" prop="functionSchema">
-          <el-input v-model="form.functionSchema" type="textarea" :rows="6" placeholder='{"name":"...","description":"...","parameters":{...}}'/>
+          <div class="schema-input-wrapper">
+            <el-input v-model="form.functionSchema" type="textarea" :rows="6" placeholder='{"name":"...","description":"...","parameters":{...}}'/>
+            <div class="schema-actions">
+              <el-button type="text" size="mini" icon="el-icon-magic-stick" @click="formatSchema">格式化 JSON</el-button>
+              <el-button type="text" size="mini" icon="el-icon-view" @click="previewSchema">预览参数表格</el-button>
+            </div>
+          </div>
           <span class="form-tip">Function Calling 的 JSON Schema，须包含 name / description / parameters</span>
         </el-form-item>
         <el-form-item label="启用状态">
@@ -118,8 +161,28 @@
       </div>
     </el-dialog>
 
-    <!-- ==================== Schema 预览弹窗 ==================== -->
-    <el-dialog title="Schema 预览" :visible.sync="schemaDialogVisible" width="600px">
+    <!-- ==================== Schema 预览弹窗 (Phase 4.5 增强) ==================== -->
+    <el-dialog title="Schema 预览" :visible.sync="schemaDialogVisible" width="650px">
+      <!-- 参数表格 -->
+      <div v-if="schemaParamRows.length > 0" class="schema-param-table">
+        <h4 style="margin-bottom:12px;color:#303133;">参数列表 ({{ schemaParamRows.length }})</h4>
+        <el-table :data="schemaParamRows" border size="small" max-height="220">
+          <el-table-column prop="name" label="参数名" width="140">
+            <template slot-scope="scope"><code>{{ scope.row.name }}</code></template>
+          </el-table-column>
+          <el-table-column prop="type" label="类型" width="100">
+            <template slot-scope="scope"><el-tag size="mini">{{ scope.row.type }}</el-tag></template>
+          </el-table-column>
+          <el-table-column label="必填" width="70" align="center">
+            <template slot-scope="scope">
+              <el-tag size="mini" :type="scope.row.required ? 'danger' : 'info'">{{ scope.row.required ? '是' : '否' }}</el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="description" label="描述" show-overflow-tooltip/>
+        </el-table>
+        <el-divider/>
+      </div>
+      <!-- JSON 原文 -->
       <div class="schema-preview">
         <pre>{{ schemaPreview }}</pre>
       </div>
@@ -128,7 +191,7 @@
 </template>
 
 <script>
-import { listTool, getTool, addTool, updateTool, delTool, changeToolStatus } from '@/api/ai/tool'
+import { listTool, getTool, addTool, updateTool, delTool, changeToolStatus, registryStatus } from '@/api/ai/tool'
 
 export default {
   name: 'AiTool',
@@ -169,11 +232,30 @@ export default {
 
       // Schema 预览
       schemaDialogVisible: false,
-      schemaPreview: ''
+      schemaPreview: '',
+
+      // Phase 4.5: 注册状态 & Schema参数预览
+      registryData: null,
+      registryLoading: false,
+      schemaParamDialogVisible: false,
+      schemaParamRows: []
+    }
+  },
+  computed: {
+    /** 注册状态栏样式类 */
+    registryStatusClass() {
+      if (!this.registryData) return ''
+      return this.registryData.failedCount > 0 ? 'registry-bar-warn' : 'registry-bar-ok'
+    },
+    /** 注册状态栏图标 */
+    registryStatusIcon() {
+      if (!this.registryData) return ''
+      return this.registryData.failedCount > 0 ? 'el-icon-warning-outline' : 'el-icon-circle-check'
     }
   },
   created() {
     this.getList()
+    this.fetchRegistryStatus()
   },
   methods: {
     /** 加载列表 */
@@ -251,6 +333,126 @@ export default {
       if (!className) return ''
       const parts = className.split('.')
       return parts.length > 2 ? '...' + parts.slice(-2).join('.') : className
+    },
+
+    // ==================== Phase 4.5 新增方法 ====================
+
+    /** 获取 ToolRegistry 注册状态 */
+    fetchRegistryStatus() {
+      this.registryLoading = true
+      registryStatus().then(response => {
+        this.registryData = response.data || null
+        this.registryLoading = false
+      }).catch(() => { this.registryLoading = false })
+    },
+
+    /** 根据注册状态返回卡片徽章 */
+    getRegistryBadge(item) {
+      // 在列表模式下没有注册信息时，显示基础状态
+      if (!this.registryData || !this.registryData.tools) {
+        if (item.status === '1') {
+          return { text: '已停用', statusType: 'info', effect: 'plain' }
+        }
+        return { text: '已启用', statusType: 'success', effect: 'plain' }
+      }
+      const found = this.registryData.tools.find(t => t.toolCode === item.toolCode)
+      if (!found) {
+        return item.status === '1'
+          ? { text: '已停用', statusType: 'info', effect: 'plain' }
+          : { text: '已启用', statusType: 'success', effect: 'plain' }
+      }
+      switch (found.registryStatus) {
+        case 'REGISTERED':
+          return { text: '已注册', statusType: 'success', effect: 'plain' }
+        case 'CLASS_MISSING':
+          return { text: '类缺失', statusType: 'danger', effect: 'dark' }
+        case 'DISABLED':
+          return { text: '已停用', statusType: 'info', effect: 'plain' }
+        default:
+          return { text: '已启用', statusType: 'success', effect: 'plain' }
+      }
+    },
+
+    /** 展开/折叠卡片上的 Schema 参数 */
+    toggleSchemaParams(item) {
+      this.$set(item, '_schemaExpanded', !item._schemaExpanded)
+    },
+
+    /** 解析 Schema JSON → 参数列表 */
+    parseSchemaParams(schemaJson) {
+      try {
+        const schema = JSON.parse(schemaJson)
+        // 兼容两种格式: 完整格式和纯parameters格式
+        const params = schema.parameters || schema
+        if (!params || !params.properties) return []
+        const required = new Set(params.required || [])
+        return Object.entries(params.properties).map(([name, def]) => ({
+          name,
+          type: def.type || 'string',
+          required: required.has(name),
+          description: def.description || ''
+        }))
+      } catch (e) {
+        return []
+      }
+    },
+
+    /** 获取 Schema 参数数量 */
+    parseSchemaParamCount(schemaJson) {
+      return this.parseSchemaParams(schemaJson).length
+    },
+
+    /** 复制工具代码到剪贴板 */
+    copyToolCode(item) {
+      const text = [
+        `// 工具代码: ${item.toolCode}`,
+        `// 工具名称: ${item.toolName}`,
+        `// 处理器类: ${item.handlerClass}`,
+        `// Schema: ${item.functionSchema || '无'}`
+      ].join('\n')
+      navigator.clipboard.writeText(text).then(() => {
+        this.$modal.msgSuccess('已复制工具信息到剪贴板')
+      }).catch(() => {
+        // 降级方案: 使用 textarea
+        const ta = document.createElement('textarea')
+        ta.value = text
+        document.body.appendChild(ta)
+        ta.select()
+        document.execCommand('copy')
+        document.body.removeChild(ta)
+        this.$modal.msgSuccess('已复制工具信息到剪贴板')
+      })
+    },
+
+    /** 格式化 Schema JSON */
+    formatSchema() {
+      const raw = this.form.functionSchema
+      if (!raw) return this.$modal.msgWarning('请先输入 Schema 内容')
+      try {
+        const obj = JSON.parse(raw)
+        this.form.functionSchema = JSON.stringify(obj, null, 2)
+        this.$modal.msgSuccess('已格式化 JSON')
+        // 重新校验
+        this.$nextTick(() => {
+          if (this.$refs.toolForm) this.$refs.toolForm.validateField('functionSchema')
+        })
+      } catch (e) {
+        this.$modal.msgError('JSON 格式不正确: ' + e.message)
+      }
+    },
+
+    /** 预览 Schema 参数表格 */
+    previewSchema() {
+      const raw = this.form.functionSchema
+      if (!raw) return this.$modal.msgWarning('请先输入 Schema 内容')
+      try {
+        const obj = JSON.parse(raw)
+        this.schemaPreview = JSON.stringify(obj, null, 2)
+        this.schemaParamRows = this.parseSchemaParams(raw)
+        this.schemaDialogVisible = true
+      } catch (e) {
+        this.$modal.msgError('JSON 格式不正确: ' + e.message)
+      }
     }
   }
 }
@@ -350,5 +552,109 @@ export default {
   word-break: break-all;
   max-height: 400px;
   overflow-y: auto;
+}
+
+/* ==================== Phase 4.5 新增样式 ==================== */
+
+/* 注册状态栏 */
+.registry-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  border-radius: 6px;
+  margin-bottom: 16px;
+  font-size: 13px;
+  transition: background .3s;
+}
+.registry-bar-ok { background: #f0f9eb; border: 1px solid #e1f3d8; }
+.registry-bar-warn { background: #fef0f0; border: 1px solid #fde2e2; }
+
+.registry-summary { display: flex; align-items: center; gap: 8px; }
+.registry-summary i { font-size: 18px; }
+.registry-bar-ok .registry-summary i { color: #67c23a; }
+.registry-bar-warn .registry-summary i { color: #f56c6c; }
+
+.registry-warn { color: #f56c6c; font-weight: 500; }
+
+/* Schema 参数切换 */
+.card-schema-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: #409eff;
+  cursor: pointer;
+  user-select: none;
+  padding: 4px 0;
+  transition: color .2s;
+}
+.card-schema-toggle:hover { color: #337ecc; }
+
+/* 微型参数表 */
+.card-schema-params { margin: 6px 0 4px; }
+.param-mini-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  background: #fafbfc;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.param-mini-table th {
+  background: #f0f2f5;
+  color: #909399;
+  font-weight: 500;
+  padding: 4px 8px;
+  text-align: left;
+}
+.param-mini-table td {
+  padding: 3px 8px;
+  border-top: 1px solid #ebeef5;
+  color: #606266;
+  vertical-align: middle;
+}
+.param-mini-table code {
+  background: #ecf5ff;
+  color: #409eff;
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-size: 11px;
+  font-family: "JetBrains Mono","Consolas",monospace;
+}
+.param-type {
+  font-family: "JetBrains Mono","Consolas",monospace;
+  font-size: 11px;
+  color: #909399;
+  background: #f5f7fa;
+  padding: 1px 5px;
+  border-radius: 2px;
+}
+.param-desc {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  color: #909399;
+}
+
+/* Schema 输入增强 */
+.schema-input-wrapper .schema-actions {
+  margin-top: 6px;
+  display: flex;
+  gap: 8px;
+}
+.schema-input-wrapper .el-button--text { font-size: 12px; }
+
+/* 参数预览表格 */
+.schema-param-table { margin-bottom: 4px; }
+.schema-param-table h4 { font-weight: 600; }
+.schema-param-table code {
+  background: #ecf5ff;
+  color: #409eff;
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-size: 12px;
 }
 </style>

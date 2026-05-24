@@ -1,12 +1,16 @@
 package com.ruoyi.system.service.impl;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import jakarta.annotation.Resource;
 import com.ruoyi.common.utils.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.ruoyi.common.utils.StringUtils;
 import com.ruoyi.system.domain.AiTool;
+import com.ruoyi.system.domain.vo.ToolRegistryStatusVO;
 import com.ruoyi.system.mapper.AiToolMapper;
 import com.ruoyi.system.service.IAiToolService;
 
@@ -107,6 +111,62 @@ public class AiToolServiceImpl implements IAiToolService {
             }
         }
         return aiToolMapper.updateStatusByIds(ids, status, SecurityUtils.getUsername());
+    }
+
+    /**
+     * 查询工具注册状态 (Phase 4.5 前后端联动)
+     *
+     * 模拟 ToolRegistry 加载逻辑: 对每个启用工具尝试 Class.forName,
+     * 判断处理器类是否在 classpath 中可用。
+     */
+    @Override
+    public Map<String, Object> getRegistryStatus() {
+        // 加载全部工具(含启用的和停用的)
+        List<AiTool> allTools = aiToolMapper.selectAiToolList(new AiTool());
+        List<ToolRegistryStatusVO> vos = new ArrayList<>();
+        int registeredCount = 0;
+        int failedCount = 0;
+
+        for (AiTool tool : allTools) {
+            String registryStatus;
+            String errorMsg = null;
+
+            if ("1".equals(tool.getStatus())) {
+                // DB中已停用
+                registryStatus = "DISABLED";
+            } else if (StringUtils.isEmpty(tool.getHandlerClass())) {
+                registryStatus = "CLASS_MISSING";
+                errorMsg = "未配置处理器类";
+                failedCount++;
+            } else {
+                try {
+                    Class.forName(tool.getHandlerClass());
+                    registryStatus = "REGISTERED";
+                    registeredCount++;
+                } catch (ClassNotFoundException e) {
+                    registryStatus = "CLASS_MISSING";
+                    errorMsg = "类未找到: " + tool.getHandlerClass();
+                    failedCount++;
+                } catch (Exception e) {
+                    registryStatus = "CLASS_MISSING";
+                    errorMsg = "类加载异常: " + e.getMessage();
+                    failedCount++;
+                }
+            }
+
+            vos.add(new ToolRegistryStatusVO(
+                    tool.getToolId(), tool.getToolCode(), tool.getToolName(),
+                    tool.getHandlerClass(), tool.getIsBuiltin(), tool.getStatus(),
+                    registryStatus, errorMsg
+            ));
+        }
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("totalEnabled", allTools.stream().filter(t -> "0".equals(t.getStatus())).count());
+        result.put("registeredCount", registeredCount);
+        result.put("failedCount", failedCount);
+        result.put("tools", vos);
+        return result;
     }
 
     /**
