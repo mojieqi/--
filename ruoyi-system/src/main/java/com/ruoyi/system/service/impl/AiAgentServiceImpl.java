@@ -1,12 +1,16 @@
 package com.ruoyi.system.service.impl;
 
 import com.ruoyi.system.agent.*;
+import com.ruoyi.system.agent.tool.ToolRegistry;
+import com.ruoyi.system.agent.tool.ToolSpringContext;
 import com.ruoyi.system.domain.*;
 import com.ruoyi.system.mapper.*;
 import com.ruoyi.system.service.IAiAgentService;
+import com.ruoyi.system.service.IAiToolService;
 import com.ruoyi.system.service.IEmbeddingService;
 import com.ruoyi.common.utils.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -45,6 +49,14 @@ public class AiAgentServiceImpl implements IAiAgentService {
 
     @Autowired
     private RestTemplate restTemplate;
+
+    /** Phase 4.2: AI工具服务 */
+    @Autowired
+    private IAiToolService iAiToolService;
+
+    /** Phase 4.4: Tavily API Key */
+    @Value("${campus.tavily.api-key:}")
+    private String tavilyApiKey;
 
     /** SseEmitter 超时时间(毫秒) */
     private static final long SSE_TIMEOUT = 300000L; // 5分钟
@@ -129,6 +141,13 @@ public class AiAgentServiceImpl implements IAiAgentService {
                     conversationMapper.updateAiConversation(update);
                 }
             }
+
+            /** Phase 4.3: 保存工具执行结果消息 */
+            @Override
+            public void onToolMessage(AiConversationMessage toolMsg) {
+                messageMapper.insertAiConversationMessage(toolMsg);
+                conversationMapper.updateMessageCount(conversationId);
+            }
         });
 
         // 9. 处理SSE异常和超时
@@ -154,10 +173,17 @@ public class AiAgentServiceImpl implements IAiAgentService {
     // --- private helpers ---
 
     private AgentEngine createEngine() {
+        // Phase 4.4: 初始化工具静态上下文 (在 ToolRegistry 反射实例化之前)
+        ToolSpringContext.init(embeddingService, restTemplate, tavilyApiKey);
+
+        // Phase 4.2: 加载启用的工具,创建注册中心
+        ToolRegistry toolRegistry = new ToolRegistry(iAiToolService.selectEnabledTools());
+
         return new AgentEngine(
                 new MemoryManager(),
                 new PromptBuilder(),
-                new LlmCaller(restTemplate)
+                new LlmCaller(restTemplate),
+                toolRegistry
         );
     }
 

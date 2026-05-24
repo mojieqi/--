@@ -145,3 +145,10 @@ xss:
   excludes: /system/notice
   # 匹配链接
   urlPatterns: /system/*,/monitor/*,/tool/*
+
+# 校园墙AI配置 (Phase 4.4)
+campus:
+  tavily:
+    # Tavily Search API Key — 用于 Agent 联网搜索工具
+    # 申请地址: https://app.tavily.com/
+    api-key: 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

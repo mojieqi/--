@@ -1,6 +1,8 @@
 package com.ruoyi.system.agent;
 
+import com.ruoyi.system.agent.LlmCaller.ToolCall;
 import com.ruoyi.system.domain.AiConversationMessage;
+import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import java.util.ArrayList;
@@ -134,6 +136,45 @@ public class PromptBuilder {
         JSONObject msg = new JSONObject();
         msg.put("role", "user");
         msg.put("content", userMessage);
+        messages.add(msg);
+    }
+
+    // ======================== 工具调用消息构建 (Phase 4.3) ========================
+
+    /**
+     * 向消息数组追加 assistant 角色消息(含 tool_calls)
+     * Phase 4.3: 一轮工具调用开始时，先添加 assistant(含tool_calls)
+     */
+    public void addAssistantToolCallMessage(JSONArray messages, List<ToolCall> toolCalls) {
+        JSONObject msg = new JSONObject();
+        msg.put("role", "assistant");
+        msg.put("content", (String) null);
+
+        JSONArray tcArray = new JSONArray();
+        for (ToolCall tc : toolCalls) {
+            JSONObject tcObj = new JSONObject();
+            tcObj.put("id", tc.getId());
+            tcObj.put("type", tc.getType() != null ? tc.getType() : "function");
+            JSONObject funcObj = new JSONObject();
+            funcObj.put("name", tc.getFunctionName());
+            funcObj.put("arguments", tc.getArgumentsJson());
+            tcObj.put("function", funcObj);
+            tcArray.add(tcObj);
+        }
+        msg.put("tool_calls", tcArray);
+        messages.add(msg);
+    }
+
+    /**
+     * 向消息数组追加 tool 角色消息(工具执行结果)
+     * Phase 4.3: 工具执行完成后，添加 tool 消息供 LLM 继续推理
+     */
+    public void addToolResultMessage(JSONArray messages, String toolCallId, String toolName, String resultContent) {
+        JSONObject msg = new JSONObject();
+        msg.put("role", "tool");
+        msg.put("tool_call_id", toolCallId);
+        msg.put("name", toolName);
+        msg.put("content", resultContent);
         messages.add(msg);
     }
 }
