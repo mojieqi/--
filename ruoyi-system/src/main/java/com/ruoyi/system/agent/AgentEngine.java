@@ -6,6 +6,8 @@ import com.alibaba.fastjson2.JSONObject;
 import com.ruoyi.system.agent.LlmCaller.ToolCall;
 import com.ruoyi.system.agent.tool.ToolRegistry;
 import com.ruoyi.system.domain.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
@@ -29,8 +31,10 @@ import java.util.*;
  */
 public class AgentEngine {
 
+    private static final Logger log = LoggerFactory.getLogger(AgentEngine.class);
+
     /** 工具调用循环最大迭代次数(防止死循环) */
-    private static final int MAX_TOOL_LOOP = 5;
+    private static final int MAX_TOOL_LOOP = 8;
 
     private final MemoryManager memoryManager;
     private final PromptBuilder promptBuilder;
@@ -140,12 +144,39 @@ public class AgentEngine {
 
             @Override
             public void onDone(String fullContent, List<ToolCall> toolCalls) {
-                if (!isToolCall || toolCalls == null || toolCalls.isEmpty()) {
-                    // === 正常内容回复: 流式输出完毕,保存并结束 ===
+                // === 优先判断: LLM 产生了文本内容 → 直接作为回答输出 ===
+                // 部分模型(如 DeepSeek 推理模型)在 tool_calls 同时也会输出文本,
+                // 此时以文本内容为准,不进入工具循环,防止死循环
+                boolean hasContent = fullContent != null && !fullContent.isEmpty();
+                if (hasContent) {
+                    // 将完整内容一次性发送(因为流式阶段被 tool_calls 抑制了)
+                    if (isToolCall) {
+                        try {
+                            emitter.send(SseEmitter.event().name("message").data(fullContent));
+                        } catch (IOException ignored) {}
+                    }
+
                     AiConversationMessage assistantMsg = new AiConversationMessage();
                     assistantMsg.setConversationId(context.getConversationId());
                     assistantMsg.setRole("assistant");
                     assistantMsg.setContent(fullContent);
+                    assistantMsg.setTokenCount(memoryManager.estimateTokens(fullContent));
+                    assistantMsg.setCreateTime(new Date());
+                    callback.onAssistantMessage(assistantMsg, summary);
+
+                    try {
+                        emitter.send(SseEmitter.event().name("done").data("[DONE]"));
+                        emitter.complete();
+                    } catch (IOException ignored) {}
+                    return;
+                }
+
+                if (!isToolCall || toolCalls == null || toolCalls.isEmpty()) {
+                    // === 纯文本回复(无工具调用) ===
+                    AiConversationMessage assistantMsg = new AiConversationMessage();
+                    assistantMsg.setConversationId(context.getConversationId());
+                    assistantMsg.setRole("assistant");
+                    assistantMsg.setContent(fullContent != null ? fullContent : "");
                     assistantMsg.setTokenCount(memoryManager.estimateTokens(fullContent));
                     assistantMsg.setCreateTime(new Date());
                     callback.onAssistantMessage(assistantMsg, summary);
@@ -163,7 +194,7 @@ public class AgentEngine {
                     AiConversationMessage assistantMsg = new AiConversationMessage();
                     assistantMsg.setConversationId(context.getConversationId());
                     assistantMsg.setRole("assistant");
-                    assistantMsg.setContent(null);
+                    assistantMsg.setContent("");
                     assistantMsg.setToolCalls(toolCallsToJson(toolCalls));
                     assistantMsg.setTokenCount(0);
                     assistantMsg.setCreateTime(new Date());
@@ -174,12 +205,21 @@ public class AgentEngine {
 
                     // 5.3 依次执行每个工具
                     for (ToolCall tc : toolCalls) {
+                        // 防御: 跳过 LLM 返回的无效工具调用(空函数名)
+                        if (tc.getFunctionName() == null || tc.getFunctionName().isEmpty()) {
+                            log.warn("跳过无效工具调用: functionName 为空, id={}, args={}",
+                                    tc.getId(), tc.getArgumentsJson());
+                            continue;
+                        }
+
+                        boolean success = true;
                         String result;
                         try {
                             Object execResult = toolRegistry.executeTool(
                                     tc.getFunctionName(), tc.getArgumentsJson());
                             result = execResult != null ? execResult.toString() : "[工具执行完成,无返回内容]";
                         } catch (Exception e) {
+                            success = false;
                             result = "[工具执行失败] " + tc.getFunctionName() + ": " + e.getMessage();
                         }
 
@@ -188,10 +228,12 @@ public class AgentEngine {
                             result = result.substring(0, 1997) + "...";
                         }
 
-                        // 5.4 发送工具结果事件
+                        // 5.4 发送工具结果事件 (Phase 4.6: 包含 arguments + success 状态)
                         try {
-                            Map<String, String> resultData = new LinkedHashMap<>();
+                            Map<String, Object> resultData = new LinkedHashMap<>();
                             resultData.put("code", tc.getFunctionName());
+                            resultData.put("arguments", tc.getArgumentsJson());
+                            resultData.put("success", success);
                             resultData.put("result", result);
                             emitter.send(SseEmitter.event().name("tool_result")
                                     .data(JSON.toJSONString(resultData)));

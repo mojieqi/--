@@ -16,6 +16,9 @@
       :messages="messages"
       :streaming="streaming"
       :streamContent="streamContent"
+      :streamToolResults="streamToolResults"
+      :streamToolCalling="streamToolCalling"
+      :streamToolCallingMsg="streamToolCallingMsg"
       @send="handleSendMessage"
       @stop="handleStop"
     />
@@ -61,6 +64,9 @@ export default {
       // 流式状态
       streaming: false,
       streamContent: '',
+      streamToolResults: [],      // Phase 4.6: 流式工具执行结果列表
+      streamToolCalling: false,   // Phase 4.6: 是否正在调用工具
+      streamToolCallingMsg: '',   // Phase 4.6: 工具调用提示文本
       currentReader: null,
       abortController: null,
 
@@ -213,6 +219,10 @@ export default {
         let buffer = ''
         let streamDone = false
 
+        // SSE 协议变量: 追踪当前事件类型和数据
+        let currentEvent = 'message'
+        let eventData = ''
+
         while (!streamDone) {
           const { done, value } = await reader.read()
           if (done) break
@@ -222,20 +232,32 @@ export default {
           buffer = lines.pop() || ''
 
           for (const line of lines) {
-            if (line.startsWith('data:')) {
+            // 1) event: 行 → 记录事件类型
+            if (line.startsWith('event:')) {
+              currentEvent = line.substring(6).trim() || 'message'
+            }
+            // 2) data: 行 → 累积数据 (检测 [DONE] 结束标记)
+            else if (line.startsWith('data:')) {
               const data = line.substring(5).trim()
               if (data === '[DONE]') {
                 streamDone = true
                 break
               }
-              if (data) {
-                this.streamContent += data
+              if (eventData) eventData += '\n'
+              eventData += data
+            }
+            // 3) 空行 → SSE 事件边界,处理当前累积事件
+            else if (line.trim() === '') {
+              if (eventData) {
+                this.processStreamEvent(currentEvent, eventData)
               }
+              currentEvent = 'message'
+              eventData = ''
             }
           }
         }
 
-        // 添加AI消息
+        // 流结束后添加 AI 消息 (非工具调用场景)
         if (this.streamContent) {
           this.messages.push({
             _tempId: Date.now(),
@@ -251,6 +273,9 @@ export default {
       } finally {
         this.streaming = false
         this.streamContent = ''
+        this.streamToolResults = []
+        this.streamToolCalling = false
+        this.streamToolCallingMsg = ''
         this.currentReader = null
         // 刷新消息列表和会话列表
         if (this.activeConversationId) {
@@ -268,6 +293,9 @@ export default {
         this.currentReader = null
       }
       this.streaming = false
+      this.streamToolResults = []
+      this.streamToolCalling = false
+      this.streamToolCallingMsg = ''
       if (this.streamContent) {
         this.messages.push({
           _tempId: Date.now(),
@@ -277,6 +305,64 @@ export default {
         })
       }
       this.streamContent = ''
+    },
+
+    /**
+     * Phase 4.6: 处理 SSE 事件分发
+     * 根据 event: 行的事件类型，将 data 路由到正确的状态
+     * 
+     * SSE 事件类型:
+     * - message    → 追加到流式文本 (streamContent)
+     * - tool_call  → 标记工具调用中 (streamToolCalling)
+     * - tool_result → 添加工具执行结果卡片 (streamToolResults)
+     * - error      → 显示错误并终止流式
+     * - done       → 流结束 ([DONE] 在前端 data 行已提前捕获)
+     */
+    processStreamEvent(eventType, data) {
+      switch (eventType) {
+        case 'message':
+          // 普通文本增量: 追加到流式显示内容
+          this.streamContent += data
+          break
+
+        case 'tool_call':
+          // 工具调用开始: 显示调用中状态
+          this.streamToolCalling = true
+          try {
+            const info = JSON.parse(data)
+            this.streamToolCallingMsg = info.message || '正在调用工具...'
+          } catch {
+            this.streamToolCallingMsg = '正在调用工具...'
+          }
+          break
+
+        case 'tool_result':
+          // 工具执行结果: 添加到结果列表 (实时展示)
+          try {
+            const result = JSON.parse(data)
+            this.streamToolResults.push({
+              code: result.code,
+              arguments: result.arguments,
+              success: result.success !== false, // 默认 true
+              result: result.result || '(无返回内容)'
+            })
+            // 工具调用完成,隐藏"调用中"提示
+            this.streamToolCalling = false
+          } catch {
+            console.warn('tool_result 事件解析失败:', data)
+          }
+          break
+
+        case 'error':
+          // 后端错误: 显示错误消息并终止
+          this.$message.error(data || '对话出现异常')
+          this.streaming = false
+          break
+
+        default:
+          // 未知事件类型,静默忽略 (兼容未来扩展)
+          break
+      }
     }
   }
 }

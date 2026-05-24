@@ -1,12 +1,16 @@
 <template>
-  <div class="tool-result-card" v-if="parsedCalls">
+  <div class="tool-result-card" v-if="parsedCalls && parsedCalls.length">
     <div class="tool-header">
-      <i class="el-icon-setting"></i> 工具调用
+      <i class="el-icon-set-up"></i>
+      <span>工具调用 ({{ parsedCalls.length }})</span>
     </div>
     <div v-for="(item, idx) in parsedCalls" :key="idx" class="tool-item">
-      <div class="tool-name">{{ item.name || 'unknown' }}</div>
-      <div v-if="item.arguments" class="tool-args">
-        <pre>{{ formatJson(item.arguments) }}</pre>
+      <div class="tool-name">
+        <i class="el-icon-link"></i>
+        {{ getToolName(item) }}
+      </div>
+      <div v-if="getToolArgs(item)" class="tool-args">
+        <pre>{{ formatArgs(getToolArgs(item)) }}</pre>
       </div>
     </div>
   </div>
@@ -16,25 +20,39 @@
 export default {
   name: 'ToolResultCard',
   props: {
-    toolCalls: { type: Object, default: null }
+    toolCalls: { type: [Object, Array, String], default: null }
   },
   computed: {
     parsedCalls() {
       if (!this.toolCalls) return null
       try {
-        if (typeof this.toolCalls === 'string') {
-          return JSON.parse(this.toolCalls)
+        let data = this.toolCalls
+        if (typeof data === 'string') {
+          data = JSON.parse(data)
         }
-        return Array.isArray(this.toolCalls) ? this.toolCalls : [this.toolCalls]
+        return Array.isArray(data) ? data : [data]
       } catch {
         return null
       }
     }
   },
   methods: {
-    formatJson(obj) {
-      if (typeof obj === 'string') return obj
-      return JSON.stringify(obj, null, 2)
+    /** 兼容 function.name / name 两种嵌套格式 */
+    getToolName(item) {
+      return (item.function && item.function.name) || item.name || 'unknown'
+    },
+    /** 兼容 function.arguments / arguments 两种嵌套格式 */
+    getToolArgs(item) {
+      return (item.function && item.function.arguments) || item.arguments || ''
+    },
+    formatArgs(args) {
+      if (!args) return ''
+      try {
+        const obj = typeof args === 'string' ? JSON.parse(args) : args
+        return JSON.stringify(obj, null, 2)
+      } catch {
+        return String(args)
+      }
     }
   }
 }
@@ -42,34 +60,49 @@ export default {
 
 <style scoped>
 .tool-result-card {
-  background: #f0f7ff;
-  border: 1px solid #d0e8ff;
-  border-radius: 6px;
+  background: #f9fafc;
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
   padding: 10px 12px;
   margin-top: 8px;
-  font-size: 12px;
+  font-size: 13px;
 }
 .tool-header {
-  color: #409eff;
-  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #606266;
+  font-weight: 600;
   margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #ebeef5;
 }
 .tool-item {
   background: #fff;
-  border-radius: 4px;
-  padding: 8px;
+  border-radius: 6px;
+  padding: 8px 10px;
   margin-bottom: 6px;
+  border: 1px solid #ebeef5;
 }
+.tool-item:last-child { margin-bottom: 0; }
 .tool-name {
-  color: #67c23a;
-  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #409eff;
+  font-weight: 600;
   margin-bottom: 4px;
 }
 .tool-args pre {
-  margin: 0;
+  margin: 4px 0 0;
+  padding: 6px 8px;
+  background: #f5f7fa;
+  border-radius: 4px;
   font-size: 11px;
-  color: #666;
+  color: #606266;
   white-space: pre-wrap;
   word-break: break-all;
+  max-height: 150px;
+  overflow-y: auto;
 }
 </style>

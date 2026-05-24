@@ -1,15 +1,23 @@
 <template>
   <div :class="['message-bubble', role]">
-    <div class="message-avatar">
+    <!-- 用户/助手头像 -->
+    <div v-if="role !== 'tool'" class="message-avatar">
       <i :class="role === 'user' ? 'el-icon-user' : 'el-icon-cpu'"></i>
     </div>
     <div class="message-body">
-      <div class="message-role">{{ role === 'user' ? '我' : 'AI助手' }}</div>
+      <div class="message-role">
+        {{ role === 'user' ? '我' : role === 'tool' ? '工具' : 'AI助手' }}
+      </div>
       <!-- AI消息使用Markdown渲染 -->
       <div v-if="role === 'assistant'" class="message-content markdown-body" v-html="renderedContent"></div>
+      <!-- 工具消息: 带工具图标的结果文本 -->
+      <div v-else-if="role === 'tool'" class="message-content tool-content">
+        <i class="el-icon-set-up"></i>
+        <span>{{ content }}</span>
+      </div>
       <!-- 用户消息纯文本 -->
       <div v-else class="message-content">{{ content }}</div>
-      <!-- 工具调用卡片 -->
+      <!-- 工具调用卡片 (历史消息中 assistant 的 tool_calls 数据) -->
       <ToolResultCard v-if="role === 'assistant' && toolCalls" :tool-calls="toolCalls" />
       <div class="message-time">{{ formatTime(createTime) }}</div>
     </div>
@@ -76,6 +84,22 @@ export default {
 }
 .user .message-avatar { background: #d0e8ff; color: #409eff; }
 .assistant .message-avatar { background: #e8f5e9; color: #67c23a; }
+/* Phase 4.6: 工具消息样式 */
+.tool .message-body {
+  max-width: 85%;
+  margin-left: 48px;
+}
+.tool .message-role { color: #e6a23c; }
+.tool .tool-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  background: #fdf6ec;
+  color: #866026;
+  border: 1px solid #fae3b7;
+  font-size: 13px;
+}
+.tool .tool-content i { color: #e6a23c; margin-top: 2px; flex-shrink: 0; }
 .message-body {
   max-width: 75%;
   min-width: 100px;

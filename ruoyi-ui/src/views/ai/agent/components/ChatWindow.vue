@@ -22,7 +22,26 @@
         <div class="message-avatar"><i class="el-icon-cpu"></i></div>
         <div class="message-body">
           <div class="message-role">AI助手</div>
-          <div class="message-content markdown-body" v-html="renderedStreaming"></div>
+          <!-- Phase 4.6: 工具调用中提示 -->
+          <div v-if="streamToolCalling" class="stream-tool-calling">
+            <i class="el-icon-loading"></i>
+            <span>{{ streamToolCallingMsg }}</span>
+          </div>
+          <!-- Phase 4.6: 工具执行结果信息卡片 -->
+          <div v-for="(tr, idx) in streamToolResults" :key="'tr-'+idx"
+               :class="['stream-tool-result', tr.success ? 'success' : 'error']">
+            <div class="tool-result-header">
+              <i :class="tr.success ? 'el-icon-success' : 'el-icon-error'"></i>
+              <span class="tool-code">{{ tr.code }}</span>
+              <span class="tool-status-tag">{{ tr.success ? '成功' : '失败' }}</span>
+            </div>
+            <div v-if="tr.arguments" class="tool-args-inline">
+              <pre>{{ formatToolArgs(tr.arguments) }}</pre>
+            </div>
+            <div class="tool-result-preview">{{ truncateText(tr.result, 300) }}</div>
+          </div>
+          <!-- 流式文本 -->
+          <div v-if="streamContent" class="message-content markdown-body" v-html="renderedStreaming"></div>
           <span class="typing-dot"></span>
         </div>
       </div>
@@ -69,7 +88,13 @@ export default {
   props: {
     messages: { type: Array, default: () => [] },
     streaming: { type: Boolean, default: false },
-    streamContent: { type: String, default: '' }
+    streamContent: { type: String, default: '' },
+    /** Phase 4.6: 流式工具执行结果列表 */
+    streamToolResults: { type: Array, default: () => [] },
+    /** Phase 4.6: 是否正在调用工具 */
+    streamToolCalling: { type: Boolean, default: false },
+    /** Phase 4.6: 工具调用提示文本 */
+    streamToolCallingMsg: { type: String, default: '' }
   },
   data() {
     return {
@@ -118,6 +143,21 @@ export default {
         .replace(/`(.+?)`/g, '<code>$1</code>')
         .replace(/\n/g, '<br>')
       return html
+    },
+    /** Phase 4.6: 格式化工具调用参数 (JSON美化) */
+    formatToolArgs(args) {
+      if (!args) return ''
+      try {
+        const obj = typeof args === 'string' ? JSON.parse(args) : args
+        return JSON.stringify(obj, null, 2)
+      } catch {
+        return String(args)
+      }
+    },
+    /** Phase 4.6: 截断工具结果超长文本 */
+    truncateText(text, maxLen) {
+      if (!text) return ''
+      return text.length > maxLen ? text.substring(0, maxLen) + '...' : text
     }
   }
 }
@@ -172,5 +212,77 @@ export default {
 @keyframes blink {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
+}
+/* ===== Phase 4.6: 流式工具状态样式 ===== */
+.stream-tool-calling {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: #f0f7ff;
+  border: 1px solid #b3d8ff;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #409eff;
+}
+.stream-tool-calling i { animation: spin 1s linear infinite; }
+@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+.stream-tool-result {
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+.stream-tool-result.success {
+  background: #f0fff4;
+  border: 1px solid #b7ebd0;
+}
+.stream-tool-result.error {
+  background: #fff5f5;
+  border: 1px solid #fbc4c4;
+}
+.tool-result-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.stream-tool-result.success .tool-result-header { color: #67c23a; }
+.stream-tool-result.error .tool-result-header { color: #f56c6c; }
+.tool-status-tag {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 500;
+}
+.stream-tool-result.success .tool-status-tag {
+  background: #e1f3e4;
+  color: #67c23a;
+}
+.stream-tool-result.error .tool-status-tag {
+  background: #fde2e2;
+  color: #f56c6c;
+}
+.tool-args-inline pre {
+  margin: 4px 0;
+  padding: 6px 8px;
+  background: rgba(0,0,0,0.04);
+  border-radius: 4px;
+  font-size: 11px;
+  color: #666;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 120px;
+  overflow-y: auto;
+}
+.tool-result-preview {
+  color: #555;
+  line-height: 1.5;
+  max-height: 100px;
+  overflow-y: auto;
+  word-break: break-word;
 }
 </style>

@@ -202,12 +202,15 @@ public class LlmCaller {
                                     continue;
                                 }
 
-                                // 2) 解析 content (仅在非tool_call模式下)
-                                if (!isToolCall && delta.containsKey("content")) {
+                                // 2) 解析 content (始终累积,某些模型在 tool_calls 之后还会输出文本)
+                                if (delta.containsKey("content")) {
                                     String chunk = delta.getString("content");
                                     if (chunk != null && !chunk.isEmpty()) {
                                         fullContent.append(chunk);
-                                        callback.onContent(chunk);
+                                        // 仅在无 tool_call 时作为流式输出
+                                        if (!isToolCall) {
+                                            callback.onContent(chunk);
+                                        }
                                     }
                                 }
                             }
@@ -277,7 +280,11 @@ public class LlmCaller {
             JSONObject function = tcDelta.getJSONObject("function");
             if (function != null) {
                 if (function.containsKey("name")) {
-                    tca.functionName = function.getString("name");
+                    String name = function.getString("name");
+                    // 防止后续 chunk 用空字符串覆盖已有的函数名
+                    if (name != null && !name.isEmpty()) {
+                        tca.functionName = name;
+                    }
                 }
                 if (function.containsKey("arguments")) {
                     tca.argumentsBuilder.append(function.getString("arguments"));
