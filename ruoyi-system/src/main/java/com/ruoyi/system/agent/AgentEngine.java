@@ -40,13 +40,16 @@ public class AgentEngine {
     private final PromptBuilder promptBuilder;
     private final LlmCaller llmCaller;
     private final ToolRegistry toolRegistry;
+    private final PreRetriever preRetriever;
 
     public AgentEngine(MemoryManager memoryManager, PromptBuilder promptBuilder,
-                       LlmCaller llmCaller, ToolRegistry toolRegistry) {
+                       LlmCaller llmCaller, ToolRegistry toolRegistry,
+                       PreRetriever preRetriever) {
         this.memoryManager = memoryManager;
         this.promptBuilder = promptBuilder;
         this.llmCaller = llmCaller;
         this.toolRegistry = toolRegistry;
+        this.preRetriever = preRetriever;
     }
 
     /**
@@ -58,6 +61,27 @@ public class AgentEngine {
      */
     public void execute(AgentContext context, SseEmitter emitter, AgentCallback callback) {
         try {
+            // ===== 0. 预检索(在构建消息前并行搜索联网+知识库) =====
+            if (preRetriever != null) {
+                String preRetrievalContext = preRetriever.preRetrieve(
+                        context.getUserMessage(), context.getKbId());
+                context = AgentContext.builder()
+                        .conversationId(context.getConversationId())
+                        .systemPrompt(context.getSystemPrompt())
+                        .history(context.getHistory())
+                        .knowledgeContext(context.getKnowledgeContext())
+                        .kbId(context.getKbId())
+                        .preRetrievalContext(preRetrievalContext)
+                        .userMessage(context.getUserMessage())
+                        .llmConfigId(context.getLlmConfigId())
+                        .modelName(context.getModelName())
+                        .baseUrl(context.getBaseUrl())
+                        .apiKey(context.getApiKey())
+                        .maxTokens(context.getMaxTokens())
+                        .temperature(context.getTemperature())
+                        .build();
+            }
+
             // ===== 1. 记忆管理 =====
             List<AiConversationMessage> allHistory = context.getHistory();
             String summary = null;

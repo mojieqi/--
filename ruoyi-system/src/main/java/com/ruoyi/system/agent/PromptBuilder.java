@@ -5,6 +5,7 @@ import com.ruoyi.system.domain.AiConversationMessage;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
+import java.time.DayOfWeek;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -31,6 +32,11 @@ public class PromptBuilder {
 
         // 1. 系统提示词
         buildSystemMessage(messages, context, summary);
+
+        // 1.5 预检索上下文(PreRetriever 自动执行的联网搜索+知识库检索)
+        if (context.getPreRetrievalContext() != null && !context.getPreRetrievalContext().isEmpty()) {
+            buildPreRetrievalContext(messages, context.getPreRetrievalContext());
+        }
 
         // 2. 知识库上下文(作为系统消息的补充)
         if (context.getKnowledgeContext() != null && !context.getKnowledgeContext().isEmpty()) {
@@ -100,6 +106,13 @@ public class PromptBuilder {
         }
 
         msg.put("content", content.toString());
+        messages.add(msg);
+    }
+
+    private void buildPreRetrievalContext(JSONArray messages, String preRetrievalContext) {
+        JSONObject msg = new JSONObject();
+        msg.put("role", "system");
+        msg.put("content", preRetrievalContext);
         messages.add(msg);
     }
 

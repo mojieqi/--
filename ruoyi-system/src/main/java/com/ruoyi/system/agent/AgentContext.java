@@ -23,6 +23,12 @@ public class AgentContext {
     /** 知识库检索上下文(RAG) */
     private final String knowledgeContext;
 
+    /** 关联的知识库ID(用于预检索) */
+    private final Long kbId;
+
+    /** 预检索上下文(联网搜索+知识库检索的预执行结果,由PreRetriever生成) */
+    private final String preRetrievalContext;
+
     /** 用户当前输入 */
     private final String userMessage;
 
@@ -49,6 +55,8 @@ public class AgentContext {
         this.systemPrompt = builder.systemPrompt;
         this.history = builder.history;
         this.knowledgeContext = builder.knowledgeContext;
+        this.kbId = builder.kbId;
+        this.preRetrievalContext = builder.preRetrievalContext;
         this.userMessage = builder.userMessage;
         this.llmConfigId = builder.llmConfigId;
         this.modelName = builder.modelName;
@@ -62,6 +70,8 @@ public class AgentContext {
     public String getSystemPrompt() { return systemPrompt; }
     public List<AiConversationMessage> getHistory() { return history; }
     public String getKnowledgeContext() { return knowledgeContext; }
+    public Long getKbId() { return kbId; }
+    public String getPreRetrievalContext() { return preRetrievalContext; }
     public String getUserMessage() { return userMessage; }
     public Long getLlmConfigId() { return llmConfigId; }
     public String getModelName() { return modelName; }
@@ -77,6 +87,8 @@ public class AgentContext {
         private String systemPrompt;
         private List<AiConversationMessage> history;
         private String knowledgeContext;
+        private Long kbId;
+        private String preRetrievalContext;
         private String userMessage;
         private Long llmConfigId;
         private String modelName;
@@ -89,6 +101,8 @@ public class AgentContext {
         public Builder systemPrompt(String v) { this.systemPrompt = v; return this; }
         public Builder history(List<AiConversationMessage> v) { this.history = v; return this; }
         public Builder knowledgeContext(String v) { this.knowledgeContext = v; return this; }
+        public Builder kbId(Long v) { this.kbId = v; return this; }
+        public Builder preRetrievalContext(String v) { this.preRetrievalContext = v; return this; }
         public Builder userMessage(String v) { this.userMessage = v; return this; }
         public Builder llmConfigId(Long v) { this.llmConfigId = v; return this; }
         public Builder modelName(String v) { this.modelName = v; return this; }

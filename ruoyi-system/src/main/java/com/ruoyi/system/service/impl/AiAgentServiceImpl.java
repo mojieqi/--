@@ -110,6 +110,7 @@ public class AiAgentServiceImpl implements IAiAgentService {
                 .systemPrompt(systemPrompt)
                 .history(history)
                 .knowledgeContext(knowledgeContext)
+                .kbId(conversation.getKbId())
                 .userMessage(userMessage)
                 .llmConfigId(llmConfig.getConfigId())
                 .modelName(llmConfig.getDefaultModel())
@@ -179,11 +180,15 @@ public class AiAgentServiceImpl implements IAiAgentService {
         // Phase 4.2: 加载启用的工具,创建注册中心
         ToolRegistry toolRegistry = new ToolRegistry(iAiToolService.selectEnabledTools());
 
+        // Phase 4.5: 创建预检索器 (在 LLM 看到消息前自动搜索)
+        PreRetriever preRetriever = ToolSpringContext.isInitialized() ? new PreRetriever() : null;
+
         return new AgentEngine(
                 new MemoryManager(),
                 new PromptBuilder(),
                 new LlmCaller(restTemplate),
-                toolRegistry
+                toolRegistry,
+                preRetriever
         );
     }
 
