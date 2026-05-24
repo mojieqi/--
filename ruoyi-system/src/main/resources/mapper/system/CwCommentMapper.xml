@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.CwCommentMapper">
+
+    <resultMap type="CwComment" id="CommentResult">
+        <id     property="commentId"    column="comment_id"    />
+        <result property="postId"       column="post_id"       />
+        <result property="userId"       column="user_id"       />
+        <result property="parentId"     column="parent_id"     />
+        <result property="replyToId"    column="reply_to_id"   />
+        <result property="replyToUid"   column="reply_to_uid"  />
+        <result property="replyToName"  column="reply_to_name" />
+        <result property="content"      column="content"       />
+        <result property="likeCount"    column="like_count"    />
+        <result property="auditStatus"  column="audit_status"  />
+        <result property="auditReason"  column="audit_reason"  />
+        <result property="aiAuditScore" column="ai_audit_score"/>
+        <result property="status"       column="status"        />
+        <result property="createBy"     column="create_by"     />
+        <result property="createTime"   column="create_time"   />
+        <result property="updateBy"     column="update_by"     />
+        <result property="updateTime"   column="update_time"   />
+        <!-- 扩展字段 -->
+        <result property="nickName"     column="nick_name"     />
+        <result property="avatar"       column="avatar"        />
+    </resultMap>
+
+    <!-- 查询一级评论列表(审核通过且未删除) -->
+    <select id="selectCwCommentList" parameterType="CwComment" resultMap="CommentResult">
+        SELECT
+            c.comment_id, c.post_id, c.user_id, c.parent_id,
+            c.reply_to_id, c.reply_to_uid, c.reply_to_name,
+            c.content, c.like_count,
+            c.audit_status, c.audit_reason, c.ai_audit_score,
+            c.status, c.create_by, c.create_time,
+            u.nick_name, u.avatar
+        FROM cw_comment c
+        LEFT JOIN sys_user u ON c.user_id = u.user_id
+        <where>
+            c.parent_id = 0
+            AND c.status = '0'
+            AND c.audit_status = '1'
+            <if test="postId != null and postId != 0">
+                AND c.post_id = #{postId}
+            </if>
+        </where>
+        ORDER BY c.create_time ASC
+    </select>
+
+    <!-- 查询某条评论的子回复 -->
+    <select id="selectChildComments" parameterType="Long" resultMap="CommentResult">
+        SELECT
+            c.comment_id, c.post_id, c.user_id, c.parent_id,
+            c.reply_to_id, c.reply_to_uid, c.reply_to_name,
+            c.content, c.like_count,
+            c.audit_status, c.audit_reason, c.ai_audit_score,
+            c.status, c.create_by, c.create_time,
+            u.nick_name, u.avatar
+        FROM cw_comment c
+        LEFT JOIN sys_user u ON c.user_id = u.user_id
+        WHERE c.parent_id = #{parentId}
+          AND c.status = '0'
+          AND c.audit_status = '1'
+        ORDER BY c.create_time ASC
+    </select>
+
+    <!-- 查询单个评论 -->
+    <select id="selectCwCommentById" parameterType="Long" resultMap="CommentResult">
+        SELECT
+            c.comment_id, c.post_id, c.user_id, c.parent_id,
+            c.reply_to_id, c.reply_to_uid, c.reply_to_name,
+            c.content, c.like_count,
+            c.audit_status, c.audit_reason, c.ai_audit_score,
+            c.status, c.create_by, c.create_time,
+            u.nick_name, u.avatar
+        FROM cw_comment c
+        LEFT JOIN sys_user u ON c.user_id = u.user_id
+        WHERE c.comment_id = #{commentId}
+    </select>
+
+    <!-- 新增评论 -->
+    <insert id="insertCwComment" parameterType="CwComment" useGeneratedKeys="true" keyProperty="commentId">
+        INSERT INTO cw_comment (
+            post_id, user_id, parent_id, reply_to_id, reply_to_uid, reply_to_name,
+            content, like_count,
+            audit_status, audit_reason, ai_audit_score,
+            status, create_by, create_time
+        ) VALUES (
+            #{postId}, #{userId}, #{parentId}, #{replyToId}, #{replyToUid}, #{replyToName},
+            #{content}, #{likeCount},
+            #{auditStatus}, #{auditReason}, #{aiAuditScore},
+            #{status}, #{createBy}, sysdate()
+        )
+    </insert>
+
+    <!-- 修改评论 -->
+    <update id="updateCwComment" parameterType="CwComment">
+        UPDATE cw_comment
+        <set>
+            <if test="content != null">content = #{content},</if>
+            <if test="auditStatus != null">audit_status = #{auditStatus},</if>
+            <if test="auditReason != null">audit_reason = #{auditReason},</if>
+            <if test="status != null">status = #{status},</if>
+            update_by = #{updateBy}, update_time = sysdate()
+        </set>
+        WHERE comment_id = #{commentId}
+    </update>
+
+    <!-- 软删除评论 -->
+    <update id="deleteCwCommentById" parameterType="Long">
+        UPDATE cw_comment SET status = '1', update_time = sysdate()
+        WHERE comment_id = #{commentId}
+    </update>
+
+    <!-- 增加评论点赞数 -->
+    <update id="incrementLikeCount">
+        UPDATE cw_comment SET like_count = like_count + #{delta}
+        WHERE comment_id = #{commentId}
+    </update>
+
+    <!-- 查询帖子总评论数 -->
+    <select id="countCommentsByPostId" parameterType="Long" resultType="int">
+        SELECT COUNT(1) FROM cw_comment
+        WHERE post_id = #{postId} AND status = '0' AND audit_status = '1'
+    </select>
+
+</mapper>

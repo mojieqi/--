@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ruoyi.system.mapper.CwReportMapper">
+
+    <resultMap type="CwReport" id="ReportResult">
+        <id     property="reportId"       column="report_id"       />
+        <result property="userId"         column="user_id"         />
+        <result property="targetType"     column="target_type"     />
+        <result property="targetId"       column="target_id"       />
+        <result property="reportReason"   column="report_reason"   />
+        <result property="reportDesc"     column="report_desc"     />
+        <result property="handleStatus"   column="handle_status"   />
+        <result property="handleResult"   column="handle_result"   />
+        <result property="handleBy"       column="handle_by"       />
+        <result property="handleTime"     column="handle_time"     />
+        <result property="createBy"       column="create_by"       />
+        <result property="createTime"     column="create_time"     />
+        <result property="updateBy"       column="update_by"       />
+        <result property="updateTime"     column="update_time"     />
+        <!-- 扩展字段 -->
+        <result property="nickName"       column="nick_name"       />
+    </resultMap>
+
+    <!-- 查询举报列表(用户查看自己的) -->
+    <select id="selectCwReportList" parameterType="CwReport" resultMap="ReportResult">
+        SELECT r.*, u.nick_name
+        FROM cw_report r
+        LEFT JOIN sys_user u ON r.user_id = u.user_id
+        <where>
+            <if test="userId != null and userId != 0">
+                AND r.user_id = #{userId}
+            </if>
+            <if test="targetType != null and targetType != ''">
+                AND r.target_type = #{targetType}
+            </if>
+            <if test="targetId != null and targetId != 0">
+                AND r.target_id = #{targetId}
+            </if>
+            <if test="handleStatus != null and handleStatus != ''">
+                AND r.handle_status = #{handleStatus}
+            </if>
+        </where>
+        ORDER BY r.create_time DESC
+    </select>
+
+    <!-- 查询用户自己对某目标的举报记录 -->
+    <select id="selectUserReport" resultMap="ReportResult">
+        SELECT r.*, u.nick_name
+        FROM cw_report r
+        LEFT JOIN sys_user u ON r.user_id = u.user_id
+        WHERE r.user_id = #{userId}
+          AND r.target_type = #{targetType}
+          AND r.target_id = #{targetId}
+    </select>
+
+    <!-- 新增举报 -->
+    <insert id="insertCwReport" parameterType="CwReport" useGeneratedKeys="true" keyProperty="reportId">
+        INSERT INTO cw_report (
+            user_id, target_type, target_id,
+            report_reason, report_desc,
+            handle_status, create_by, create_time
+        ) VALUES (
+            #{userId}, #{targetType}, #{targetId},
+            #{reportReason}, #{reportDesc},
+            '0', #{createBy}, sysdate()
+        )
+    </insert>
+
+    <!-- 更新举报处理状态 -->
+    <update id="updateHandleStatus" parameterType="CwReport">
+        UPDATE cw_report
+        SET handle_status = #{handleStatus},
+            handle_result = #{handleResult},
+            handle_by = #{handleBy},
+            handle_time = sysdate()
+        WHERE report_id = #{reportId}
+    </update>
+
+    <!-- 统计某目标被举报次数 -->
+    <select id="countReportsByTarget" resultType="int">
+        SELECT COUNT(1) FROM cw_report
+        WHERE target_type = #{targetType} AND target_id = #{targetId}
+    </select>
+
+</mapper>

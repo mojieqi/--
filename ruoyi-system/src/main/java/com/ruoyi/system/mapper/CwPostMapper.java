@@ -1,6 +1,7 @@
 package com.ruoyi.system.mapper;
 
 import java.util.List;
+import org.apache.ibatis.annotations.Param;
 import com.ruoyi.system.domain.CwPost;
 
 /**
@@ -57,12 +58,27 @@ public interface CwPostMapper {
     public int incrementViewCount(Long postId);
 
     /**
-     * 更新点赞数
+     * 更新点赞数(根据cw_like表同步)
      */
     public int updateLikeCount(Long postId);
 
     /**
-     * 更新评论数
+     * 更新评论数(根据cw_comment表同步)
      */
     public int updateCommentCount(Long postId);
+
+    /**
+     * 增量更新帖子点赞数 (+1 / -1)
+     */
+    public int incrementPostLikeCount(@Param("postId") Long postId, @Param("delta") int delta);
+
+    /**
+     * 增量更新帖子评论数 (+1 / -1)
+     */
+    public int incrementCommentCount(@Param("postId") Long postId, @Param("delta") int delta);
+
+    /**
+     * 增量更新帖子举报数 (+1)
+     */
+    public int incrementReportCount(Long postId);
 }

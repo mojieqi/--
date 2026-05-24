@@ -63,9 +63,11 @@
           </div>
           <h3 class="card-title">{{ post.title }}</h3>
           <p class="card-desc">{{ (post.content || '').substring(0, 100) }}{{ (post.content || '').length > 100 ? '...' : '' }}</p>
-          <div class="card-footer">
+          <div class="card-footer" @click.stop>
             <span class="footer-item"><i class="el-icon-view"></i> {{ post.viewCount || 0 }}</span>
-            <span class="footer-item"><i class="el-icon-star-off"></i> {{ post.likeCount || 0 }}</span>
+            <span class="footer-item like-btn" :class="{ liked: post.isLiked }" @click="handleLike(post)">
+              <i :class="post.isLiked ? 'el-icon-star-on' : 'el-icon-star-off'"></i> {{ post.likeCount || 0 }}
+            </span>
             <span class="footer-item"><i class="el-icon-chat-dot-round"></i> {{ post.commentCount || 0 }}</span>
             <span class="footer-time">{{ formatTime(post.createTime) }}</span>
           </div>
@@ -86,6 +88,7 @@
 
 <script>
 import { listPost, categoryList } from '@/api/campus/post'
+import { toggleLike } from '@/api/campus/like'
 
 export default {
   name: 'CampusPostIndex',
@@ -137,6 +140,22 @@ export default {
     },
     goDetail(postId) {
       this.$router.push('/campus/post/detail/' + postId)
+    },
+    async handleLike(post) {
+      if (!this.$store.state.user.token) {
+        this.$message.warning('请先登录')
+        return
+      }
+      try {
+        const res = await toggleLike({ targetType: '0', targetId: post.postId })
+        if (res.code === 200) {
+          const { liked } = res.data
+          post.isLiked = liked
+          post.likeCount = (post.likeCount || 0) + (liked ? 1 : -1)
+        }
+      } catch (e) {
+        console.error('点赞失败', e)
+      }
     },
     formatTime(time) {
       if (!time) return ''
@@ -281,6 +300,13 @@ export default {
 .footer-item i {
   margin-right: 2px;
 }
+
+.footer-item.like-btn {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.footer-item.like-btn:hover { color: #e6a23c; }
+.footer-item.like-btn.liked { color: #e6a23c; }
 
 .footer-time {
   margin-left: auto;

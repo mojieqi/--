@@ -61,15 +61,18 @@
         </div>
       </el-card>
 
-      <!-- 评论区（占位） -->
+      <!-- 评论区 -->
       <el-card class="comment-card" shadow="never">
-        <div slot="header">
-          <span><i class="el-icon-chat-dot-round"></i> 评论区</span>
-        </div>
-        <div class="comment-placeholder">
-          <p>评论功能将在 Phase 7 上线，敬请期待</p>
-        </div>
+        <comment-section :post-id="postId" ref="commentSection" />
       </el-card>
+
+      <!-- 举报弹窗 -->
+      <report-dialog
+        :visible.sync="reportVisible"
+        target-type="0"
+        :target-id="postId"
+        @success="handleReportSuccess"
+      />
     </div>
 
     <!-- 帖子不存在 -->
@@ -82,14 +85,19 @@
 
 <script>
 import { getPost, delPost } from '@/api/campus/post'
+import { toggleLike } from '@/api/campus/like'
+import CommentSection from '@/views/campus/comment/CommentSection'
+import ReportDialog from '@/views/campus/report/ReportDialog'
 
 export default {
   name: 'CampusPostDetail',
+  components: { CommentSection, ReportDialog },
   data() {
     return {
       loading: true,
       post: null,
-      isOwner: false
+      isOwner: false,
+      reportVisible: false
     }
   },
   computed: {
@@ -136,11 +144,31 @@ export default {
         })
       }).catch(() => {})
     },
-    handleLike() {
-      this.$message.info('点赞功能将在 Phase 7 上线')
+    async handleLike() {
+      if (!this.$store.state.user.token) {
+        this.$message.warning('请先登录')
+        return
+      }
+      try {
+        const res = await toggleLike({ targetType: '0', targetId: this.postId })
+        if (res.code === 200) {
+          const { liked } = res.data
+          this.post.isLiked = liked
+          this.post.likeCount = (this.post.likeCount || 0) + (liked ? 1 : -1)
+        }
+      } catch (e) {
+        console.error('点赞失败', e)
+      }
     },
     handleReport() {
-      this.$message.info('举报功能将在 Phase 7 上线')
+      if (!this.$store.state.user.token) {
+        this.$message.warning('请先登录')
+        return
+      }
+      this.reportVisible = true
+    },
+    handleReportSuccess() {
+      this.$message.success('举报提交成功')
     }
   }
 }
@@ -225,7 +253,7 @@ export default {
   border-radius: 8px;
 }
 
-.comment-placeholder {
+.comment-card >>> .comment-placeholder {
   text-align: center;
   padding: 40px 0;
   color: #c0c4cc;
